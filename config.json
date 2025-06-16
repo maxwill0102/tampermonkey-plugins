@@ -7,7 +7,7 @@
     },
     {
       "name": "moduleA",
-      "enabled": false,
+      "enabled": true,
       "url": "https://tampermonkey-plugins.vercel.app/plugins/moduleA.js"
     }
   ]
