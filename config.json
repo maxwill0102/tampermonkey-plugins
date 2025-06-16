@@ -1,7 +1,10 @@
 {
-  "authorized": true,
-  "enabledModules": [
-    "https://tampermonkey-plugins.vercel.app/plugins/moduleA.js",
-    "https://tampermonkey-plugins.vercel.app/plugins/moduleB.js"
+  "plugins": [
+    {
+      "name": "demoPlugin",
+      "enabled": true,
+      "url": "https://tampermonkey-plugins.vercel.app/plugins/demoPlugin.js"
+    }
   ]
 }
+
