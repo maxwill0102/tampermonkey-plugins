@@ -7,6 +7,13 @@
       "roles": ["vip", "basic"],
       "url": "https://tampermonkey-plugins.vercel.app/plugins/demoPlugin.js"
     },
+      {
+      "name": "activityHelper",
+      "version": "1.0.2",
+      "enabled": true,
+      "roles": ["vip", "basic"],
+      "url": "https://tampermonkey-plugins.vercel.app/plugins/demoPlugin.js"
+    },
     {
       "name": "moduleA",
       "version": "0.9.0",
