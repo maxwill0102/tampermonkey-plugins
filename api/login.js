@@ -1,15 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 
-export default function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { username, password } = req.body;
   const filePath = path.resolve('./data/users.json');
-  const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  const fileContent = fs.readFileSync(filePath, 'utf-8');
+  const users = JSON.parse(fileContent).users;
 
-  const user = data.find(u => u.username === username && u.password === password);
+  const user = users.find(u => u.username === username && u.password === password);
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-  res.status(200).json({ token: user.token });
+  res.json({ token: user.token });
 }
