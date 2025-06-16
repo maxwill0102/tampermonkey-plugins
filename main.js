@@ -1,28 +1,22 @@
 (async function () {
   'use strict';
 
-  const CONFIG_URL = 'https://tampermonkey-plugins.vercel.app/config.json';
-
-  async function loadPlugin(url) {
-    const script = document.createElement('script');
-    script.src = url + '?t=' + Date.now();
-    document.body.appendChild(script);
-  }
+  const configUrl = 'https://tampermonkey-plugins.vercel.app/config.json';
 
   try {
-    const config = await fetch(CONFIG_URL).then(res => res.json());
+    const res = await fetch(configUrl);
+    const config = await res.json();
 
-    if (!config.authorized) {
-      alert('未授权用户，请联系管理员开通权限');
-      return;
+    for (const plugin of config.plugins) {
+      if (plugin.enabled) {
+        const script = document.createElement('script');
+        script.src = plugin.url + '?t=' + Date.now(); // 防缓存
+        script.onload = () => console.log(`✅ 插件加载成功: ${plugin.name}`);
+        script.onerror = () => console.error(`❌ 插件加载失败: ${plugin.name}`);
+        document.body.appendChild(script);
+      }
     }
-
-    for (const plugin of config.enabledModules) {
-      await loadPlugin(plugin);
-    }
-
-    console.log('[插件壳] 插件加载完成');
   } catch (err) {
-    console.error('[插件壳] 加载失败', err);
+    console.error('❌ 加载配置失败：', err);
   }
 })();
