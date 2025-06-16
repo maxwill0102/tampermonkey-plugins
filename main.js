@@ -1,4 +1,28 @@
-console.log("✅ 插件远程 main.js 加载成功");
+(async function () {
+  'use strict';
 
-// 示例功能模块（后续会加入：自动报名、价格修改等）
-window.alert("Hello from remote plugin!");
+  const CONFIG_URL = 'https://tampermonkey-plugins.vercel.app/config.json';
+
+  async function loadPlugin(url) {
+    const script = document.createElement('script');
+    script.src = url + '?t=' + Date.now();
+    document.body.appendChild(script);
+  }
+
+  try {
+    const config = await fetch(CONFIG_URL).then(res => res.json());
+
+    if (!config.authorized) {
+      alert('未授权用户，请联系管理员开通权限');
+      return;
+    }
+
+    for (const plugin of config.enabledModules) {
+      await loadPlugin(plugin);
+    }
+
+    console.log('[插件壳] 插件加载完成');
+  } catch (err) {
+    console.error('[插件壳] 加载失败', err);
+  }
+})();
