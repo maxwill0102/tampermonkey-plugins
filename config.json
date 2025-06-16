@@ -4,7 +4,11 @@
       "name": "demoPlugin",
       "enabled": true,
       "url": "https://tampermonkey-plugins.vercel.app/plugins/demoPlugin.js"
+    },
+    {
+      "name": "moduleA",
+      "enabled": false,
+      "url": "https://tampermonkey-plugins.vercel.app/plugins/moduleA.js"
     }
   ]
 }
-
