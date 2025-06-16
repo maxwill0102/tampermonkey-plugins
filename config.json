@@ -5,6 +5,12 @@
       "enabled": true,
       "version": "1.0.2",
       "url": "https://tampermonkey-plugins.vercel.app/plugins/demoPlugin.js"
+    },
+    {
+      "name": "moduleA",
+      "enabled": true,
+      "version": "0.9.0",
+      "url": "https://tampermonkey-plugins.vercel.app/plugins/moduleA.js"
     }
   ]
 }
