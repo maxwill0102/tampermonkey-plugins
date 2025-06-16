@@ -18,7 +18,7 @@
             });
             if (authorized) {
               console.log('✅ 当前站点已授权，准备加载插件...');
-              callback(); // 执行后续插件加载
+              callback();
             } else {
               alert('⚠️ 当前站点未授权，插件已终止。\n请联系管理员申请授权。');
               console.warn('❌ 未授权站点：', host);
@@ -56,10 +56,10 @@
                 console.log(`🔄 插件 ${plugin.name} 已更新版本 (${lastVersion} → ${plugin.version})，触发热更新`);
                 GM_setValue(versionKey, plugin.version);
               } else {
-                console.log(`📦 加载插件: ${plugin.name} (版本: ${plugin.version || 'unknown'})`);
+                console.log(`📦 插件 ${plugin.name} 已是最新版本 (${plugin.version})，跳过加载`);
+                return;
               }
 
-              // 动态加载脚本
               GM_xmlhttpRequest({
                 method: 'GET',
                 url: plugin.url + '?t=' + Date.now(),
@@ -90,6 +90,5 @@
     });
   }
 
-  // 第一步：授权校验 → 加载插件
   checkAuthorization(loadConfigAndRunPlugins);
 })();
