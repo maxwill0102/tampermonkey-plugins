@@ -1,14 +1,18 @@
-[
-  {
-    "username": "user1",
-    "password": "123456",
-    "token": "abc123",
-    "modules": ["demoPlugin", "moduleA"]
-  },
-  {
-    "username": "user2",
-    "password": "654321",
-    "token": "def456",
-    "modules": []
-  }
-]
+{
+  "users": [
+    {
+      "username": "user1",
+      "password": "123456",
+      "token": "token-user1",
+      "roles": ["demoPlugin", "moduleA"],
+      "expires": "2099-12-31T23:59:59Z"
+    },
+    {
+      "username": "user2",
+      "password": "abc123",
+      "token": "token-user2",
+      "roles": [],
+      "expires": "2023-12-31T23:59:59Z"
+    }
+  ]
+}
