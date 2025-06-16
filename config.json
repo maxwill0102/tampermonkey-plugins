@@ -14,6 +14,27 @@
       "roles": ["vip", "basic"],
       "url": "https://tampermonkey-plugins.vercel.app/plugins/demoPlugin.js"
     },
+      {
+      "name": "moduleb",
+      "version": "1.0.2",
+      "enabled": true,
+      "roles": ["vip", "basic"],
+      "url": "https://tampermonkey-plugins.vercel.app/plugins/moduleb.js"
+    },
+      {
+      "name": "modulec",
+      "version": "1.0.2",
+      "enabled": true,
+      "roles": ["vip", "basic"],
+      "url": "https://tampermonkey-plugins.vercel.app/plugins/modulec.js"
+    },
+      {
+      "name": "moduled",
+      "version": "1.0.2",
+      "enabled": true,
+      "roles": ["vip", "basic"],
+      "url": "https://tampermonkey-plugins.vercel.app/plugins/moduled.js"
+    },
     {
       "name": "moduleA",
       "version": "0.9.0",
