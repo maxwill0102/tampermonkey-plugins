@@ -1,1 +1,14 @@
-
+[
+  {
+    "username": "user1",
+    "password": "123456",
+    "token": "abc123",
+    "modules": ["demoPlugin", "moduleA"]
+  },
+  {
+    "username": "user2",
+    "password": "654321",
+    "token": "def456",
+    "modules": []
+  }
+]
