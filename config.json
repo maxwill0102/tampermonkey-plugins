@@ -2,17 +2,17 @@
   "plugins": [
     {
       "name": "demoPlugin",
-      "version": "1.0.0",
-      "url": "https://tampermonkey-plugins.vercel.app/plugins/demoPlugin.js",
+      "version": "1.0.2",
       "enabled": true,
-      "roles": ["vip", "basic"]  // 谁能用这个插件
+      "roles": ["vip", "basic"],
+      "url": "https://tampermonkey-plugins.vercel.app/plugins/demoPlugin.js"
     },
     {
-      "name": "proTool",
-      "version": "2.0.0",
-      "url": "https://tampermonkey-plugins.vercel.app/plugins/proTool.js",
+      "name": "moduleA",
+      "version": "0.9.0",
       "enabled": true,
-      "roles": ["vip"]  // 仅VIP能使用
+      "roles": ["vip"],
+      "url": "https://tampermonkey-plugins.vercel.app/plugins/moduleA.js"
     }
   ]
 }
