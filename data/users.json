@@ -4,7 +4,7 @@
       "username": "user1",
       "password": "123456",
       "token": "token-user1",
-      "roles": ["demoPlugin", "moduleA"],
+      "roles": ["demoPlugin", "moduleA", "activityHelper"],
       "expires": "2099-12-31T23:59:59Z"
     },
     {
