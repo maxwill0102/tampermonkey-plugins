@@ -1,0 +1,7 @@
+{
+  "authorized": true,
+  "enabledModules": [
+    "https://tampermonkey-plugins.vercel.app/plugins/moduleA.js",
+    "https://tampermonkey-plugins.vercel.app/plugins/moduleB.js"
+  ]
+}
