@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         活动报名插件 V3.1（UI 分页 + 表头）
+// @name         活动报名插件 V3.2（五列表头+是否报名）
 // @namespace    https://yourdomain.com
-// @version      3.1.0
-// @description  长短期活动报名工具，含 UI 分页与表头展示
+// @version      3.2.0
+// @description  长短期活动报名工具，含分页+表头+勾选状态展示
 // @match        https://*.kuajingmaihuo.com/*
 // @grant        GM_addStyle
 // ==/UserScript==
@@ -14,7 +14,7 @@
     #moduled-drawer {
       position: fixed;
       top: 0; right: 0;
-      width: 680px;
+      width: 780px;
       height: 100%;
       background: #fff;
       border-left: 1px solid #ccc;
@@ -71,19 +71,21 @@
     .moduled-tab-panel.active {
       display: block;
     }
-    .moduled-table-header {
-      font-weight: bold;
-      display: grid;
-      grid-template-columns: 1fr 2fr 2fr;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
+    .moduled-table-header,
     .moduled-table-row {
       display: grid;
-      grid-template-columns: 1fr 2fr 2fr;
+      grid-template-columns: 1.5fr 2fr 2fr 1fr 1fr;
       gap: 10px;
-      border-bottom: 1px dashed #ddd;
       padding: 6px 0;
+      align-items: center;
+    }
+    .moduled-table-header {
+      font-weight: bold;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 4px;
+    }
+    .moduled-table-row {
+      border-bottom: 1px dashed #ddd;
     }
   `;
   GM_addStyle(style);
@@ -94,7 +96,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.1 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 3.2 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -148,7 +150,6 @@
   }
 
   function fetchActivityData() {
-    // 长期活动提取
     const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
     const longContainer = document.getElementById('moduled-long');
     longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
@@ -164,7 +165,6 @@
         </div>`;
     });
 
-    // 短期活动提取
     const shortPanelRoots = [
       document.getElementById('moduled-tab-0'),
       document.getElementById('moduled-tab-1'),
@@ -185,12 +185,13 @@
         const rows = document.querySelectorAll('tbody tr');
         const container = shortPanelRoots[i] || shortPanelRoots[0];
 
-        // 插入表头
         container.innerHTML = `
           <div class="moduled-table-header">
             <div>活动主题</div>
             <div>报名时间</div>
             <div>活动时间</div>
+            <div>已报名</div>
+            <div>是否报名</div>
           </div>
         `;
 
@@ -200,11 +201,16 @@
             const title = cells[0].innerText.trim();
             const applyTime = cells[1].innerText.trim();
             const actTime = cells[2].innerText.trim();
+            const joined = cells[3].innerText.trim();
+            const isChecked = joined !== '0';
+
             container.innerHTML += `
               <div class="moduled-table-row">
                 <div>${title}</div>
                 <div>${applyTime}</div>
                 <div>${actTime}</div>
+                <div>${joined}</div>
+                <div>${isChecked ? '✅' : '❌'}</div>
               </div>
             `;
           }
