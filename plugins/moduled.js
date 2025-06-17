@@ -109,12 +109,37 @@
 
   function fetchActivityData() {
     // 长期活动
-    const longList = document.querySelectorAll('.act-item_activityName__Ryh3Y');
-    const longContainer = document.getElementById('moduled-long');
-    longContainer.innerHTML = '';
-    longList.forEach(el => {
-      longContainer.innerHTML += `<div class="moduled-activity"><strong>${el.innerText.trim()}</strong></div>`;
-    });
+   const longContainer = document.getElementById('moduled-long');
+longContainer.innerHTML = `
+  <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th align="left" style="padding: 4px 0;">活动类型</th>
+        <th align="left" style="padding: 4px 0;">活动说明</th>
+        <th align="left" style="padding: 4px 0;">是否报名</th>
+      </tr>
+    </thead>
+    <tbody id="moduled-long-body"></tbody>
+  </table>
+`;
+
+const longBody = document.getElementById('moduled-long-body');
+const items = document.querySelectorAll('.act-item_actItem__x2Uci');
+
+items.forEach(item => {
+  const type = item.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
+  const desc = item.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
+  const joined = item.querySelector('.BTN_outerWrapperBtn_5-118-0 span')?.innerText.includes('去报名') ? '☐' : '✅';
+
+  longBody.innerHTML += `
+    <tr>
+      <td style="padding: 6px 0;">${type}</td>
+      <td style="padding: 6px 0;">${desc}</td>
+      <td style="padding: 6px 0;">${joined}</td>
+    </tr>
+  `;
+});
+
 
     // 短期活动：模拟点击所有 tab 页并监听表格变化
     const shortContainer = document.getElementById('moduled-short');
