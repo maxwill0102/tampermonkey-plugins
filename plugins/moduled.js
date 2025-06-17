@@ -1,8 +1,7 @@
-
 // ==UserScript==
 // @name         活动报名插件 V3（UI 分页优化）
 // @namespace    https://yourdomain.com
-// @version      3.0.0
+// @version      3.0.1
 // @description  长短期活动报名工具，含 UI 分页与滑动支持
 // @match        https://*.kuajingmaihuo.com/*
 // @grant        GM_addStyle
@@ -77,18 +76,21 @@
       display: block;
     }
     .moduled-table-header {
-      font-weight: bold;
       display: grid;
-      grid-template-columns: 1fr 2fr 1fr;
       gap: 10px;
       margin-bottom: 8px;
+      font-weight: bold;
+      background-color: #f5f5f5;
+      padding: 8px;
     }
     .moduled-table-row {
       display: grid;
-      grid-template-columns: 1fr 2fr 1fr;
       gap: 10px;
       border-bottom: 1px dashed #ddd;
-      padding: 6px 0;
+      padding: 8px;
+    }
+    .moduled-table-row:nth-child(even) {
+      background-color: #f9f9f9;
     }
   `;
   GM_addStyle(style);
@@ -156,20 +158,27 @@
     // 长期活动提取
     const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
     const longContainer = document.getElementById('moduled-long');
-    longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
+    longContainer.innerHTML = '<div class="moduled-table-header" style="grid-template-columns: 1fr 2fr 1fr;">' +
+      '<div>活动类型</div><div>活动说明</div><div>是否报名</div>' +
+      '</div>';
+    
     longList.forEach(el => {
       const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
       const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
       const joined = el.querySelector('button span')?.innerText?.includes('去报名') ? '☐' : '☑';
-      longContainer.innerHTML += `
-        <div class="moduled-table-row">
-          <div>${name}</div>
-          <div>${desc}</div>
-          <div>${joined}</div>
-        </div>`;
+      
+      const row = document.createElement('div');
+      row.className = 'moduled-table-row';
+      row.style.gridTemplateColumns = '1fr 2fr 1fr';
+      row.innerHTML = `
+        <div>${name}</div>
+        <div>${desc}</div>
+        <div>${joined}</div>
+      `;
+      longContainer.appendChild(row);
     });
 
-    // 短期活动：模拟点击所有 tab 页并监听表格变化
+    // 短期活动处理
     const shortPanelRoots = [
       document.getElementById('moduled-tab-0'),
       document.getElementById('moduled-tab-1'),
@@ -178,6 +187,7 @@
     const tabWrapperList = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
     const tabContainer = tabWrapperList.length >= 2 ? tabWrapperList[1] : null;
     if (!tabContainer) return console.warn('未找到短期活动 tab');
+    
     const tabs = tabContainer.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -186,25 +196,55 @@
         const tab = tabs[i];
         const label = tab.querySelector('.act-detail_tabLabel__RCnKY')?.innerText?.trim() || '未命名';
         tab.click();
-        await delay(600);
-        const rows = document.querySelectorAll('tbody tr');
+        await delay(800); // 增加延迟确保内容加载
+        
+        // 获取页面上的表格数据
+        const table = document.querySelector('table[data-testid="beast-core-table-container"]');
+        if (!table) continue;
+        
+        // 提取表头
+        const headers = [];
+        const headerRow = table.querySelector('thead tr');
+        if (headerRow) {
+          headerRow.querySelectorAll('th').forEach(th => {
+            headers.push(th.innerText.trim());
+          });
+        }
+        
+        // 创建表头容器
         const container = shortPanelRoots[i] || shortPanelRoots[0];
         container.innerHTML = '';
+        
+        // 添加表头
+        if (headers.length > 0) {
+          const headerDiv = document.createElement('div');
+          headerDiv.className = 'moduled-table-header';
+          headerDiv.style.gridTemplateColumns = `repeat(${headers.length}, 1fr)`;
+          
+          headers.forEach(headerText => {
+            const headerCell = document.createElement('div');
+            headerCell.textContent = headerText;
+            headerDiv.appendChild(headerCell);
+          });
+          container.appendChild(headerDiv);
+        }
+        
+        // 提取表格内容
+        const rows = table.querySelectorAll('tbody tr');
         rows.forEach(row => {
           const cells = row.querySelectorAll('td');
-          if (cells.length >= 5) {
-            const title = cells[0].innerText.trim();
-            const applyTime = cells[1].innerText.trim();
-            const actTime = cells[2].innerText.trim();
-            const joined = cells[3].innerText.trim();
-            container.innerHTML += `
-              <div class="moduled-activity">
-                <strong>${title}</strong>
-                报名时间：${applyTime}<br>
-                活动时间：${actTime}<br>
-                已报名：${joined}
-              </div>
-            `;
+          if (cells.length > 0) {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'moduled-table-row';
+            rowDiv.style.gridTemplateColumns = `repeat(${cells.length}, 1fr)`;
+            
+            cells.forEach(cell => {
+              const cellDiv = document.createElement('div');
+              cellDiv.innerHTML = cell.innerHTML;
+              rowDiv.appendChild(cellDiv);
+            });
+            
+            container.appendChild(rowDiv);
           }
         });
       }
