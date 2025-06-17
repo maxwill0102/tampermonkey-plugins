@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         活动报名插件 V3.2（五列表头+是否报名）
+// @name         活动报名插件 V3.3（是否报名改为勾选框）
 // @namespace    https://yourdomain.com
-// @version      3.2.0
-// @description  长短期活动报名工具，含分页+表头+勾选状态展示
+// @version      3.3.0
+// @description  支持是否报名勾选，后续支持提交选中项
 // @match        https://*.kuajingmaihuo.com/*
 // @grant        GM_addStyle
 // ==/UserScript==
@@ -14,7 +14,7 @@
     #moduled-drawer {
       position: fixed;
       top: 0; right: 0;
-      width: 780px;
+      width: 800px;
       height: 100%;
       background: #fff;
       border-left: 1px solid #ccc;
@@ -96,23 +96,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.2 <span id="moduled-close">❌</span></h2>
-      <div class="moduled-section" id="moduled-settings">
-        <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
-        <div class="moduled-input-group">
-          <label>活动价格设置方式</label>
-          <select id="moduled-price-mode">
-            <option value="fixed">活动价格不低于固定值</option>
-            <option value="profit">活动利润率不低于固定比例</option>
-          </select>
-        </div>
-        <div class="moduled-input-group"><label id="moduled-price-label">活动价格不低于</label><input type="number" id="moduled-price-input" /></div>
-        <div class="moduled-input-group"><label>活动库存数量</label><input type="number" id="moduled-stock-input" /></div>
-      </div>
-      <div class="moduled-section">
-        <strong>长期活动</strong>
-        <div id="moduled-long"></div>
-      </div>
+      <h2>活动报名 3.3 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section">
         <strong>短期活动</strong>
         <div class="moduled-tabs">
@@ -132,10 +116,6 @@
     `;
     document.body.appendChild(drawer);
     document.getElementById('moduled-close').onclick = () => drawer.remove();
-    document.getElementById('moduled-price-mode').onchange = function () {
-      document.getElementById('moduled-price-label').textContent =
-        this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
-    };
 
     document.querySelectorAll('.moduled-tab').forEach(tab => {
       tab.onclick = () => {
@@ -150,21 +130,6 @@
   }
 
   function fetchActivityData() {
-    const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
-    const longContainer = document.getElementById('moduled-long');
-    longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
-    longList.forEach(el => {
-      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
-      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
-      const joined = el.querySelector('button span')?.innerText?.includes('去报名') ? '☐' : '☑';
-      longContainer.innerHTML += `
-        <div class="moduled-table-row">
-          <div>${name}</div>
-          <div>${desc}</div>
-          <div>${joined}</div>
-        </div>`;
-    });
-
     const shortPanelRoots = [
       document.getElementById('moduled-tab-0'),
       document.getElementById('moduled-tab-1'),
@@ -195,14 +160,14 @@
           </div>
         `;
 
-        rows.forEach(row => {
+        rows.forEach((row, index) => {
           const cells = row.querySelectorAll('td');
           if (cells.length >= 5) {
             const title = cells[0].innerText.trim();
             const applyTime = cells[1].innerText.trim();
             const actTime = cells[2].innerText.trim();
             const joined = cells[3].innerText.trim();
-            const isChecked = joined !== '0';
+            const checkboxId = `chk-${i}-${index}`;
 
             container.innerHTML += `
               <div class="moduled-table-row">
@@ -210,7 +175,7 @@
                 <div>${applyTime}</div>
                 <div>${actTime}</div>
                 <div>${joined}</div>
-                <div>${isChecked ? '✅' : '❌'}</div>
+                <div><input type="checkbox" id="${checkboxId}" /></div>
               </div>
             `;
           }
