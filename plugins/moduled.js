@@ -146,5 +146,47 @@ console.log('✅ moduled.js 已执行');
   });
 
   renderActivityList('大促进阶-限时活动'); // 默认显示
+  // 绑定“开始报名”按钮逻辑
+drawer.querySelector('#submitBtn').onclick = () => {
+  // 获取设置项
+  const priceType = drawer.querySelector('#priceType').value;
+  const priceValue = drawer.querySelector('#priceInput').value;
+  const stockValue = drawer.querySelector('#stockInput').value;
+
+  // 获取当前活动类型
+  const activeTab = drawer.querySelector('.tab-btn.active').textContent.trim();
+
+  // 收集已勾选的活动项
+  const selected = [];
+  const rows = drawer.querySelectorAll('#activity-list-container div');
+  rows.forEach(row => {
+    const checkbox = row.querySelector('input[type=checkbox]');
+    if (checkbox && checkbox.checked) {
+      const info = row.innerText.split('\n');
+      selected.push({
+        shop: info[0].replace('店铺：', '').trim(),
+        registerTime: info[1].replace('报名：', '').trim(),
+        activityTime: info[2].replace('活动：', '').trim(),
+      });
+    }
+  });
+
+  // 输出结果（后面我们可以替换成 POST 请求）
+  console.log('📦 报名设置：', {
+    priceType,
+    priceValue,
+    stockValue,
+    activityType: activeTab,
+    selectedActivities: selected
+  });
+
+  if (selected.length === 0) {
+    alert('⚠️ 请至少选择一个活动进行报名！');
+    return;
+  }
+
+  alert(`✅ 共${selected.length}个活动已准备报名（模拟提交）`);
+};
+
 
 })();
