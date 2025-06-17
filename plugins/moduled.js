@@ -1,9 +1,8 @@
-
 // ==UserScript==
-// @name         活动报名插件 V3（UI 分页优化）
+// @name         活动报名插件 V3.1（UI 分页 + 表头）
 // @namespace    https://yourdomain.com
-// @version      3.0.0
-// @description  长短期活动报名工具，含 UI 分页与滑动支持
+// @version      3.1.0
+// @description  长短期活动报名工具，含 UI 分页与表头展示
 // @match        https://*.kuajingmaihuo.com/*
 // @grant        GM_addStyle
 // ==/UserScript==
@@ -48,10 +47,6 @@
       padding: 6px;
       font-size: 14px;
     }
-    .moduled-activity {
-      padding: 8px 0;
-      border-bottom: 1px dashed #ddd;
-    }
     .moduled-tabs {
       display: flex;
       margin-bottom: 10px;
@@ -79,13 +74,13 @@
     .moduled-table-header {
       font-weight: bold;
       display: grid;
-      grid-template-columns: 1fr 2fr 1fr;
+      grid-template-columns: 1fr 2fr 2fr;
       gap: 10px;
       margin-bottom: 8px;
     }
     .moduled-table-row {
       display: grid;
-      grid-template-columns: 1fr 2fr 1fr;
+      grid-template-columns: 1fr 2fr 2fr;
       gap: 10px;
       border-bottom: 1px dashed #ddd;
       padding: 6px 0;
@@ -99,7 +94,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.0 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 3.1 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -169,7 +164,7 @@
         </div>`;
     });
 
-    // 短期活动：模拟点击所有 tab 页并监听表格变化
+    // 短期活动提取
     const shortPanelRoots = [
       document.getElementById('moduled-tab-0'),
       document.getElementById('moduled-tab-1'),
@@ -184,25 +179,32 @@
     async function clickAndExtractTabs() {
       for (let i = 0; i < tabs.length; i++) {
         const tab = tabs[i];
-        const label = tab.querySelector('.act-detail_tabLabel__RCnKY')?.innerText?.trim() || '未命名';
         tab.click();
         await delay(600);
+
         const rows = document.querySelectorAll('tbody tr');
         const container = shortPanelRoots[i] || shortPanelRoots[0];
-        container.innerHTML = '';
+
+        // 插入表头
+        container.innerHTML = `
+          <div class="moduled-table-header">
+            <div>活动主题</div>
+            <div>报名时间</div>
+            <div>活动时间</div>
+          </div>
+        `;
+
         rows.forEach(row => {
           const cells = row.querySelectorAll('td');
           if (cells.length >= 5) {
             const title = cells[0].innerText.trim();
             const applyTime = cells[1].innerText.trim();
             const actTime = cells[2].innerText.trim();
-            const joined = cells[3].innerText.trim();
             container.innerHTML += `
-              <div class="moduled-activity">
-                <strong>${title}</strong>
-                报名时间：${applyTime}<br>
-                活动时间：${actTime}<br>
-                已报名：${joined}
+              <div class="moduled-table-row">
+                <div>${title}</div>
+                <div>${applyTime}</div>
+                <div>${actTime}</div>
               </div>
             `;
           }
