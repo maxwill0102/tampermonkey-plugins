@@ -112,49 +112,57 @@
   }
 
   function fetchActivityData() {
-    const tryLoad = () => {
-      const longList = document.querySelectorAll('.act-item_activityName__Ryh3Y');
-      const shortList = document.querySelectorAll('.act-detail_tabLabel__RCnKY');
-      const tbodyRows = document.querySelectorAll('tbody tr');
+  // 长期活动
+  const longList = document.querySelectorAll('.act-item_activityName__Ryh3Y');
+  const longContainer = document.getElementById('moduled-long');
+  longContainer.innerHTML = '';
+  longList.forEach(el => {
+    longContainer.innerHTML += `<div class="moduled-activity"><strong>${el.innerText.trim()}</strong></div>`;
+  });
 
-      if (longList.length === 0 || shortList.length === 0 || tbodyRows.length === 0) {
-        console.log('⏳ 等待活动数据渲染...');
-        return setTimeout(tryLoad, 1000);
+  // 短期活动
+  const shortContainer = document.getElementById('moduled-short');
+  shortContainer.innerHTML = '';
+
+  const tabLabels = document.querySelectorAll('.act-detail_tabLabel__RCnKY');
+  const tabWrappers = document.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+
+  async function loadTabActivities(index) {
+    if (index >= tabWrappers.length) return;
+
+    // 模拟点击 tab
+    tabWrappers[index].click();
+
+    // 等待内容更新（根据实际 DOM 更新速度可以调节）
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // 获取 tab 名称
+    const tabName = tabLabels[index]?.innerText.trim() || `分类${index + 1}`;
+    shortContainer.innerHTML += `<div style="margin:8px 0;font-weight:bold;">【${tabName}】</div>`;
+
+    // 抓取活动行
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td');
+      if (cells.length >= 5) {
+        const title = cells[0].innerText.trim();
+        const signup = cells[3].innerText.trim();
+        const active = cells[4].innerText.trim();
+        shortContainer.innerHTML += `
+          <div class="moduled-activity">
+            <strong>${title}</strong>
+            报名时间：${signup}<br>
+            活动时间：${active}
+          </div>
+        `;
       }
+    });
 
-      console.log('✅ 活动数据加载成功');
-
-      const longContainer = document.getElementById('moduled-long');
-      longContainer.innerHTML = '';
-      longList.forEach(el => {
-        longContainer.innerHTML += `<div class="moduled-activity"><strong>${el.innerText.trim()}</strong></div>`;
-      });
-
-      const shortContainer = document.getElementById('moduled-short');
-      shortContainer.innerHTML = '';
-      shortList.forEach((tab, index) => {
-        shortContainer.innerHTML += `<div style="margin:8px 0;font-weight:bold;">【${tab.innerText.trim()}】</div>`;
-        for (let i = index * 7; i < Math.min((index + 1) * 7, tbodyRows.length); i++) {
-          const row = tbodyRows[i];
-          const cells = row.querySelectorAll('td');
-          if (cells.length >= 5) {
-            const title = cells[0].innerText.trim();
-            const applyTime = cells[3].innerText.trim();
-            const actTime = cells[4].innerText.trim();
-            shortContainer.innerHTML += `
-              <div class="moduled-activity">
-                <strong>${title}</strong>
-                报名时间：${applyTime}<br>
-                活动时间：${actTime}
-              </div>
-            `;
-          }
-        }
-      });
-    };
-
-    tryLoad();
+    await loadTabActivities(index + 1); // 递归处理下一个 tab
   }
+
+  loadTabActivities(0); // 从第一个 tab 开始加载
+}
 
   // 注册触发函数
   window.startModuledPlugin = () => {
