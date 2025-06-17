@@ -1,3 +1,13 @@
+
+// ==UserScript==
+// @name         活动报名插件 V3（UI 分页优化）
+// @namespace    https://yourdomain.com
+// @version      3.0.0
+// @description  长短期活动报名工具，含 UI 分页与滑动支持
+// @match        https://*.kuajingmaihuo.com/*
+// @grant        GM_addStyle
+// ==/UserScript==
+
 (function () {
   'use strict';
 
@@ -5,7 +15,7 @@
     #moduled-drawer {
       position: fixed;
       top: 0; right: 0;
-      width: 480px;
+      width: 680px;
       height: 100%;
       background: #fff;
       border-left: 1px solid #ccc;
@@ -42,12 +52,45 @@
       padding: 8px 0;
       border-bottom: 1px dashed #ddd;
     }
-    .moduled-activity strong {
+    .moduled-tabs {
+      display: flex;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #ccc;
+    }
+    .moduled-tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .moduled-tab.active {
+      color: red;
+      border-bottom: 2px solid red;
+    }
+    .moduled-tab-panel {
+      display: none;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .moduled-tab-panel.active {
       display: block;
-      font-size: 14px;
+    }
+    .moduled-table-header {
+      font-weight: bold;
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .moduled-table-row {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 10px;
+      border-bottom: 1px dashed #ddd;
+      padding: 6px 0;
     }
   `;
-
   GM_addStyle(style);
 
   function createDrawer() {
@@ -57,13 +100,8 @@
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
       <h2>活动报名 3.0 <span id="moduled-close">❌</span></h2>
-
       <div class="moduled-section" id="moduled-settings">
-        <div class="moduled-input-group">
-          <label>当前绑定店铺</label>
-          <div id="moduled-shop-name">（开发中）</div>
-        </div>
-
+        <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
           <label>活动价格设置方式</label>
           <select id="moduled-price-mode">
@@ -71,96 +109,87 @@
             <option value="profit">活动利润率不低于固定比例</option>
           </select>
         </div>
-
-        <div class="moduled-input-group">
-          <label id="moduled-price-label">活动价格不低于</label>
-          <input type="number" id="moduled-price-input" />
-        </div>
-
-        <div class="moduled-input-group">
-          <label>活动库存数量</label>
-          <input type="number" id="moduled-stock-input" />
-        </div>
+        <div class="moduled-input-group"><label id="moduled-price-label">活动价格不低于</label><input type="number" id="moduled-price-input" /></div>
+        <div class="moduled-input-group"><label>活动库存数量</label><input type="number" id="moduled-stock-input" /></div>
       </div>
-
-      <div class="moduled-section" id="moduled-activities">
+      <div class="moduled-section">
         <strong>长期活动</strong>
         <div id="moduled-long"></div>
-        <strong style="margin-top:10px;display:block;">短期活动</strong>
-        <div id="moduled-short"></div>
       </div>
-
+      <div class="moduled-section">
+        <strong>短期活动</strong>
+        <div class="moduled-tabs">
+          <div class="moduled-tab active" data-tab="0">大促进阶</div>
+          <div class="moduled-tab" data-tab="1">秒杀进阶</div>
+          <div class="moduled-tab" data-tab="2">清仓进阶</div>
+        </div>
+        <div id="moduled-short-panels">
+          <div class="moduled-tab-panel active" id="moduled-tab-0"></div>
+          <div class="moduled-tab-panel" id="moduled-tab-1"></div>
+          <div class="moduled-tab-panel" id="moduled-tab-2"></div>
+        </div>
+      </div>
       <div class="moduled-section" style="text-align:center;">
         <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
       </div>
     `;
     document.body.appendChild(drawer);
-
     document.getElementById('moduled-close').onclick = () => drawer.remove();
-
     document.getElementById('moduled-price-mode').onchange = function () {
-      document.getElementById('moduled-price-label').textContent = this.value === 'profit'
-        ? '活动利润率不低于'
-        : '活动价格不低于';
+      document.getElementById('moduled-price-label').textContent =
+        this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
+
+    document.querySelectorAll('.moduled-tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.moduled-tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('moduled-tab-' + tab.dataset.tab).classList.add('active');
+      };
+    });
 
     fetchActivityData();
   }
 
   function fetchActivityData() {
-    // 长期活动
-   const longContainer = document.getElementById('moduled-long');
-longContainer.innerHTML = `
-  <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
-    <thead>
-      <tr>
-        <th align="left" style="padding: 4px 0;">活动类型</th>
-        <th align="left" style="padding: 4px 0;">活动说明</th>
-        <th align="left" style="padding: 4px 0;">是否报名</th>
-      </tr>
-    </thead>
-    <tbody id="moduled-long-body"></tbody>
-  </table>
-`;
-
-const longBody = document.getElementById('moduled-long-body');
-const items = document.querySelectorAll('.act-item_actItem__x2Uci');
-
-items.forEach(item => {
-  const type = item.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
-  const desc = item.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
-  const joined = item.querySelector('.BTN_outerWrapperBtn_5-118-0 span')?.innerText.includes('去报名') ? '☐' : '✅';
-
-  longBody.innerHTML += `
-    <tr>
-      <td style="padding: 6px 0;">${type}</td>
-      <td style="padding: 6px 0;">${desc}</td>
-      <td style="padding: 6px 0;">${joined}</td>
-    </tr>
-  `;
-});
-
+    // 长期活动提取
+    const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
+    const longContainer = document.getElementById('moduled-long');
+    longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
+    longList.forEach(el => {
+      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
+      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
+      const joined = el.querySelector('button span')?.innerText?.includes('去报名') ? '☐' : '☑';
+      longContainer.innerHTML += `
+        <div class="moduled-table-row">
+          <div>${name}</div>
+          <div>${desc}</div>
+          <div>${joined}</div>
+        </div>`;
+    });
 
     // 短期活动：模拟点击所有 tab 页并监听表格变化
-    const shortContainer = document.getElementById('moduled-short');
+    const shortPanelRoots = [
+      document.getElementById('moduled-tab-0'),
+      document.getElementById('moduled-tab-1'),
+      document.getElementById('moduled-tab-2'),
+    ];
     const tabWrapperList = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
     const tabContainer = tabWrapperList.length >= 2 ? tabWrapperList[1] : null;
     if (!tabContainer) return console.warn('未找到短期活动 tab');
-
     const tabs = tabContainer.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
-
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
     async function clickAndExtractTabs() {
-      shortContainer.innerHTML = '';
-      for (const tab of tabs) {
+      for (let i = 0; i < tabs.length; i++) {
+        const tab = tabs[i];
         const label = tab.querySelector('.act-detail_tabLabel__RCnKY')?.innerText?.trim() || '未命名';
-
         tab.click();
-        await delay(600); // 等待 DOM 内容刷新
-
+        await delay(600);
         const rows = document.querySelectorAll('tbody tr');
-        shortContainer.innerHTML += `<div style="margin:8px 0;font-weight:bold;">【${label}】</div>`;
+        const container = shortPanelRoots[i] || shortPanelRoots[0];
+        container.innerHTML = '';
         rows.forEach(row => {
           const cells = row.querySelectorAll('td');
           if (cells.length >= 5) {
@@ -168,7 +197,7 @@ items.forEach(item => {
             const applyTime = cells[1].innerText.trim();
             const actTime = cells[2].innerText.trim();
             const joined = cells[3].innerText.trim();
-            shortContainer.innerHTML += `
+            container.innerHTML += `
               <div class="moduled-activity">
                 <strong>${title}</strong>
                 报名时间：${applyTime}<br>
@@ -184,7 +213,6 @@ items.forEach(item => {
     clickAndExtractTabs();
   }
 
-  // 注册插件入口
   window.__moduled_plugin__ = () => {
     createDrawer();
   };
