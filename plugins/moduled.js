@@ -52,4 +52,18 @@
     </div>
   `;
   document.body.appendChild(drawer);
+  // 👇 联动价格类型选择
+  const priceTypeSelect = document.getElementById('price-type');
+  const priceLabel = document.getElementById('price-label');
+
+  priceTypeSelect.addEventListener('change', () => {
+    const type = priceTypeSelect.value;
+    if (type === 'fix') {
+      priceLabel.textContent = '活动价格不低于：';
+    } else if (type === 'rate') {
+      priceLabel.textContent = '活动利润率不低于：';
+    }
+  });
+
+  
 })();
