@@ -172,21 +172,41 @@
     });
   }
 
-  function fetchActivityData() {
-    const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
-    const longContainer = document.getElementById('moduled-long');
-    longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
-    longList.forEach((el, index) => {
-      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
-      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
-      const checkboxId = `long-chk-${index}`;
-      longContainer.innerHTML += `
-        <div class="moduled-table-row">
-          <div>${name}</div>
-          <div>${desc}</div>
-          <div><input type="checkbox" id="${checkboxId}" /></div>
-        </div>`;
-    });
+  function fetchAllProducts() {
+  const actId = document.getElementById('moduled-activity-id')?.value?.trim();
+  if (!actId) return alert('请填写活动 ID');
+
+  console.log('🎯 抓取商品中 活动ID:', actId);
+
+  GM_xmlhttpRequest({
+    method: 'POST',
+    url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
+    headers: {
+      'Content-Type': 'application/json',
+      'anti-content': '0aqAfaiZriGLy99CsoAbhDLKOundOg-FRwRztvS1v_FvZOzBCmfjNhi3lYFUIkMkwqUl9UhDZblHKCgsxWH9JuMH3IMg3soRHZR7Rv_17qj6X7BefXv88kwyBEZF2f5UxlfKE5nh3tUyVe8aNv9E1kQ15a1sEvfvcm57pfBfhhXc-sCUYgZR6ueu09MgytXhSK4ZzhMeHJVmMNjWY8JiNw2kfOwj1dXPwVL1lVw0sqB7PSwxurDh2aioGLqTxkCNppoK-v_t8uZ4Snt7lUYY4u5c9Tukm2vN4Sfzae_Cwu0PXZ7LEc4zxOEAcpa4th8c7-uM4_C3sB2pNBBL4fIxlg8gr7azN0HCCQjFEH-iY4KRFVq1IsWSI6-Ow86VjbG8tAO6lO0MVsleKLL7x3xuWKvRjKJLSbVKr2R1zO23eY4F0uscrxibU9a-Q7H5Rl3Jd8ihcnqbjTFQrG8bxWApOrawjAcQtLHF-boDRLQJy5Hc4bf0DHhztCH'
+    },
+    data: JSON.stringify({
+      activityType: 13,
+      activityThematicId: actId,
+      rowCount: 50,
+      addSite: true,
+      searchScrollContext: ''
+    }),
+    onload: function (res) {
+      try {
+        const json = JSON.parse(res.responseText);
+        console.log('🎯 可报名商品数据：', json?.data?.matchList || []);
+      } catch (e) {
+        console.error('❌ 解析失败', e);
+      }
+    },
+    onerror: function (err) {
+      console.error('❌ 请求失败', err);
+    }
+  });
+}
+
+
 
     const shortPanelRoots = [
       document.getElementById('moduled-tab-0'),
