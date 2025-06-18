@@ -1,11 +1,12 @@
 // ==UserScript==
-// @name         活动报名插件 V3.4（支持抓取活动商品数据）
+// @name         活动报名插件 V3.5（抓取数据使用 GM_xmlhttpRequest 解决403）
 // @namespace    https://yourdomain.com
-// @version      3.4.0
-// @description  支持是否报名勾选、活动详情商品数据自动分页抓取
+// @version      3.5.0
+// @description  支持勾选报名与跨域抓取商品数据
 // @match        https://*.kuajingmaihuo.com/*
 // @match        https://agentseller.temu.com/*
 // @grant        GM_addStyle
+// @grant        GM_xmlhttpRequest
 // ==/UserScript==
 
 (function () {
@@ -97,7 +98,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.4 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 3.5 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -142,26 +143,32 @@
       document.getElementById('moduled-price-label').textContent =
         this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
-
     document.getElementById('fetch-products-btn').onclick = fetchAllProducts;
+  }
 
-    document.querySelectorAll('.moduled-tab').forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.moduled-tab-panel').forEach(p => p.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('moduled-tab-' + tab.dataset.tab).classList.add('active');
-      };
+  function fetchTemuProductPage(payload) {
+    return new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method: 'POST',
+        url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
+        headers: { 'Content-Type': 'application/json' },
+        data: JSON.stringify(payload),
+        onload: res => {
+          try {
+            resolve(JSON.parse(res.responseText));
+          } catch (e) {
+            reject(e);
+          }
+        },
+        onerror: err => reject(err)
+      });
     });
-
-    fetchActivityData();
   }
 
   async function fetchAllProducts() {
     const thematicId = document.getElementById('moduled-thematic-id').value.trim();
     if (!thematicId) return alert('请填写活动 ID');
 
-    const API_URL = 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match';
     const allProducts = [];
     let hasMore = true;
     let searchScrollContext = null;
@@ -176,41 +183,34 @@
       };
       if (searchScrollContext) payload.searchScrollContext = searchScrollContext;
 
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json;charset=utf-8'
-        },
-        body: JSON.stringify(payload)
-      });
+      try {
+        const data = await fetchTemuProductPage(payload);
+        const list = data?.result?.matchList || [];
+        hasMore = data?.result?.hasMore;
+        searchScrollContext = data?.result?.searchScrollContext;
 
-      const data = await res.json();
-      const list = data?.result?.matchList || [];
-      hasMore = data?.result?.hasMore;
-      searchScrollContext = data?.result?.searchScrollContext;
-
-      list.forEach(item => {
-        const sku = item.activitySiteInfoList?.[0]?.skcList?.[0]?.skuList?.[0] || {};
-        allProducts.push({
-          productId: item.productId,
-          productName: item.productName,
-          skuId: sku.skuId,
-          suggestPrice: sku.suggestActivityPrice,
-          enrollSessionIdList: item.enrollSessionIdList,
-          salesStock: item.salesStock
+        list.forEach(item => {
+          const sku = item.activitySiteInfoList?.[0]?.skcList?.[0]?.skuList?.[0] || {};
+          allProducts.push({
+            productId: item.productId,
+            productName: item.productName,
+            skuId: sku.skuId,
+            suggestPrice: sku.suggestActivityPrice,
+            enrollSessionIdList: item.enrollSessionIdList,
+            salesStock: item.salesStock
+          });
         });
-      });
 
-      console.log(`📄 第 ${page++} 页，共抓取 ${list.length} 条`);
-      await new Promise(r => setTimeout(r, 300));
+        console.log(`📄 第 ${page++} 页，共抓取 ${list.length} 条`);
+        await new Promise(r => setTimeout(r, 300));
+      } catch (e) {
+        console.error('❌ 抓取失败：', e);
+        break;
+      }
     }
 
     console.log('✅ 所有商品抓取完成，总数：', allProducts.length);
     console.table(allProducts);
-  }
-
-  function fetchActivityData() {
-    // 可保留原始 fetchActivityData 内容逻辑（略）
   }
 
   window.__moduled_plugin__ = () => {
