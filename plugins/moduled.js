@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         活动报名插件 V3.3（支持勾选报名）
+// @name         活动报名插件 V3.5（新版短期活动支持）
 // @namespace    https://yourdomain.com
-// @version      3.3.0
-// @description  长短期活动报名工具，支持是否报名勾选，保留原始逻辑结构
-// @match        https://*.kuajingmaihuo.com/*
+// @version      3.5.0
+// @description  支持新版 TEMU 活动页面短期活动数据抓取与展示
+// @match        https://agentseller.temu.com/activity/marketing-activity*
 // @grant        GM_addStyle
 // ==/UserScript==
 
@@ -33,20 +33,6 @@
       padding: 16px;
       border-bottom: 1px solid #eee;
     }
-    .moduled-input-group {
-      margin-bottom: 10px;
-    }
-    .moduled-input-group label {
-      display: block;
-      font-size: 14px;
-      margin-bottom: 4px;
-    }
-    .moduled-input-group input,
-    .moduled-input-group select {
-      width: 100%;
-      padding: 6px;
-      font-size: 14px;
-    }
     .moduled-tabs {
       display: flex;
       margin-bottom: 10px;
@@ -74,7 +60,7 @@
     .moduled-table-header,
     .moduled-table-row {
       display: grid;
-      grid-template-columns: 1.5fr 2fr 2fr 1fr 1fr;
+      grid-template-columns: 2fr 2fr 2fr 1fr 1fr;
       gap: 10px;
       padding: 6px 0;
       align-items: center;
@@ -96,22 +82,11 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.3 <span id="moduled-close">❌</span></h2>
-      <div class="moduled-section" id="moduled-settings">
-        <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
-        <div class="moduled-input-group">
-          <label>活动价格设置方式</label>
-          <select id="moduled-price-mode">
-            <option value="fixed">活动价格不低于固定值</option>
-            <option value="profit">活动利润率不低于固定比例</option>
-          </select>
-        </div>
-        <div class="moduled-input-group"><label id="moduled-price-label">活动价格不低于</label><input type="number" id="moduled-price-input" /></div>
-        <div class="moduled-input-group"><label>活动库存数量</label><input type="number" id="moduled-stock-input" /></div>
-      </div>
+      <h2>活动报名 3.5 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section">
-        <strong>长期活动</strong>
-        <div id="moduled-long"></div>
+        <label>活动 ID 抓取商品测试</label>
+        <input id="moduled-activity-id" placeholder="请输入活动 ID" style="width:100%; margin-bottom:8px;" />
+        <button id="moduled-fetch-products">抓取商品数据</button>
       </div>
       <div class="moduled-section">
         <strong>短期活动</strong>
@@ -126,16 +101,9 @@
           <div class="moduled-tab-panel" id="moduled-tab-2"></div>
         </div>
       </div>
-      <div class="moduled-section" style="text-align:center;">
-        <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
-      </div>
     `;
     document.body.appendChild(drawer);
     document.getElementById('moduled-close').onclick = () => drawer.remove();
-    document.getElementById('moduled-price-mode').onchange = function () {
-      document.getElementById('moduled-price-label').textContent =
-        this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
-    };
 
     document.querySelectorAll('.moduled-tab').forEach(tab => {
       tab.onclick = () => {
@@ -146,79 +114,40 @@
       };
     });
 
-    fetchActivityData();
+    extractShortActivities();
   }
 
-  function fetchActivityData() {
-    const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
-    const longContainer = document.getElementById('moduled-long');
-    longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
-    longList.forEach((el, index) => {
-      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
-      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
-      const checkboxId = `long-chk-${index}`;
-      longContainer.innerHTML += `
-        <div class="moduled-table-row">
-          <div>${name}</div>
-          <div>${desc}</div>
-          <div><input type="checkbox" id="${checkboxId}" /></div>
-        </div>`;
+  function extractShortActivities() {
+    const root = document.querySelector('[data-testid="beast-core-table"]');
+    const tbody = root?.querySelector('tbody');
+    if (!tbody) return console.warn('短期活动列表未找到');
+
+    const rows = tbody.querySelectorAll('tr');
+    const container = document.getElementById('moduled-tab-0');
+    container.innerHTML = `<div class="moduled-table-header">
+      <div>活动主题</div>
+      <div>报名时间</div>
+      <div>活动时间</div>
+      <div>已报名</div>
+      <div>是否报名</div>
+    </div>`;
+
+    rows.forEach((row, index) => {
+      const tds = row.querySelectorAll('td');
+      const title = tds[0]?.innerText.trim() || '';
+      const applyTime = tds[1]?.innerText.trim() || '';
+      const actTime = tds[2]?.innerText.trim() || '';
+      const joined = tds[3]?.innerText.trim() || '';
+      const checkboxId = `short-check-${index}`;
+
+      container.innerHTML += `<div class="moduled-table-row">
+        <div>${title}</div>
+        <div>${applyTime}</div>
+        <div>${actTime}</div>
+        <div>${joined}</div>
+        <div><input type="checkbox" id="${checkboxId}" /></div>
+      </div>`;
     });
-
-    const shortPanelRoots = [
-      document.getElementById('moduled-tab-0'),
-      document.getElementById('moduled-tab-1'),
-      document.getElementById('moduled-tab-2'),
-    ];
-    const tabWrapperList = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
-    const tabContainer = tabWrapperList.length >= 2 ? tabWrapperList[1] : null;
-    if (!tabContainer) return console.warn('未找到短期活动 tab');
-    const tabs = tabContainer.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
-    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-    async function clickAndExtractTabs() {
-      for (let i = 0; i < tabs.length; i++) {
-        const tab = tabs[i];
-        tab.click();
-        await delay(600);
-
-        const rows = document.querySelectorAll('tbody tr');
-        const container = shortPanelRoots[i] || shortPanelRoots[0];
-
-        container.innerHTML = `
-          <div class="moduled-table-header">
-            <div>活动主题</div>
-            <div>报名时间</div>
-            <div>活动时间</div>
-            <div>已报名</div>
-            <div>是否报名</div>
-          </div>
-        `;
-
-        rows.forEach((row, index) => {
-          const cells = row.querySelectorAll('td');
-          if (cells.length >= 5) {
-            const title = cells[0].innerText.trim();
-            const applyTime = cells[1].innerText.trim();
-            const actTime = cells[2].innerText.trim();
-            const joined = cells[3].innerText.trim();
-            const checkboxId = `short-chk-${i}-${index}`;
-
-            container.innerHTML += `
-              <div class="moduled-table-row">
-                <div>${title}</div>
-                <div>${applyTime}</div>
-                <div>${actTime}</div>
-                <div>${joined}</div>
-                <div><input type="checkbox" id="${checkboxId}" /></div>
-              </div>
-            `;
-          }
-        });
-      }
-    }
-
-    clickAndExtractTabs();
   }
 
   window.__moduled_plugin__ = () => {
