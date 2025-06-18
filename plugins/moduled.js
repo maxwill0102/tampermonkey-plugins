@@ -112,7 +112,7 @@
         <div class="moduled-input-group">
           <label>活动 ID 抓取商品测试</label>
           <input type="text" id="moduled-thematic-id" placeholder="请输入 activityThematicId" />
-          <button style="margin-top:6px;width:100%;" onclick="fetchAllProducts()">抓取商品数据</button>
+          <button id="fetch-products-btn" style="margin-top:6px;width:100%;">抓取商品数据</button>
         </div>
       </div>
       <div class="moduled-section">
@@ -143,6 +143,8 @@
         this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
 
+    document.getElementById('fetch-products-btn').onclick = fetchAllProducts;
+
     document.querySelectorAll('.moduled-tab').forEach(tab => {
       tab.onclick = () => {
         document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
@@ -155,7 +157,7 @@
     fetchActivityData();
   }
 
-  window.fetchAllProducts = async function () {
+  async function fetchAllProducts() {
     const thematicId = document.getElementById('moduled-thematic-id').value.trim();
     if (!thematicId) return alert('请填写活动 ID');
 
@@ -205,10 +207,10 @@
 
     console.log('✅ 所有商品抓取完成，总数：', allProducts.length);
     console.table(allProducts);
-  };
+  }
 
   function fetchActivityData() {
-    // ...原始 fetchActivityData 逻辑保持不变
+    // 可保留原始 fetchActivityData 内容逻辑（略）
   }
 
   window.__moduled_plugin__ = () => {
