@@ -78,6 +78,7 @@
     originFn?.();
     setTimeout(() => {
       addProductFetchUI();
+        createDrawer(); // 或者你要执行的主逻辑
     }, 1000);
   };
 })();
