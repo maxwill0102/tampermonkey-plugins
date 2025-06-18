@@ -1,12 +1,10 @@
 // ==UserScript==
-// @name         活动报名插件 V3.5（抓取数据使用 GM_xmlhttpRequest 解决403）
+// @name         活动报名插件 V3.3（支持勾选报名）
 // @namespace    https://yourdomain.com
-// @version      3.5.0
-// @description  支持勾选报名与跨域抓取商品数据
+// @version      3.3.0
+// @description  长短期活动报名工具，支持是否报名勾选，保留原始逻辑结构
 // @match        https://*.kuajingmaihuo.com/*
-// @match        https://agentseller.temu.com/*
 // @grant        GM_addStyle
-// @grant        GM_xmlhttpRequest
 // ==/UserScript==
 
 (function () {
@@ -98,7 +96,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.5 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 3.3 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -110,11 +108,6 @@
         </div>
         <div class="moduled-input-group"><label id="moduled-price-label">活动价格不低于</label><input type="number" id="moduled-price-input" /></div>
         <div class="moduled-input-group"><label>活动库存数量</label><input type="number" id="moduled-stock-input" /></div>
-        <div class="moduled-input-group">
-          <label>活动 ID 抓取商品测试</label>
-          <input type="text" id="moduled-thematic-id" placeholder="请输入 activityThematicId" />
-          <button id="fetch-products-btn" style="margin-top:6px;width:100%;">抓取商品数据</button>
-        </div>
       </div>
       <div class="moduled-section">
         <strong>长期活动</strong>
@@ -143,74 +136,89 @@
       document.getElementById('moduled-price-label').textContent =
         this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
-    document.getElementById('fetch-products-btn').onclick = fetchAllProducts;
-  }
 
-  function fetchTemuProductPage(payload) {
-    return new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({
-        method: 'POST',
-        url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
-        headers: { 'Content-Type': 'application/json' },
-        data: JSON.stringify(payload),
-        onload: res => {
-          try {
-            resolve(JSON.parse(res.responseText));
-          } catch (e) {
-            reject(e);
-          }
-        },
-        onerror: err => reject(err)
-      });
-    });
-  }
-
-  async function fetchAllProducts() {
-    const thematicId = document.getElementById('moduled-thematic-id').value.trim();
-    if (!thematicId) return alert('请填写活动 ID');
-
-    const allProducts = [];
-    let hasMore = true;
-    let searchScrollContext = null;
-    let page = 1;
-
-    while (hasMore) {
-      const payload = {
-        activityType: 13,
-        activityThematicId: thematicId,
-        rowCount: 50,
-        addSite: true
+    document.querySelectorAll('.moduled-tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.moduled-tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('moduled-tab-' + tab.dataset.tab).classList.add('active');
       };
-      if (searchScrollContext) payload.searchScrollContext = searchScrollContext;
+    });
 
-      try {
-        const data = await fetchTemuProductPage(payload);
-        const list = data?.result?.matchList || [];
-        hasMore = data?.result?.hasMore;
-        searchScrollContext = data?.result?.searchScrollContext;
+    fetchActivityData();
+  }
 
-        list.forEach(item => {
-          const sku = item.activitySiteInfoList?.[0]?.skcList?.[0]?.skuList?.[0] || {};
-          allProducts.push({
-            productId: item.productId,
-            productName: item.productName,
-            skuId: sku.skuId,
-            suggestPrice: sku.suggestActivityPrice,
-            enrollSessionIdList: item.enrollSessionIdList,
-            salesStock: item.salesStock
-          });
+  function fetchActivityData() {
+    const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
+    const longContainer = document.getElementById('moduled-long');
+    longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
+    longList.forEach((el, index) => {
+      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
+      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
+      const checkboxId = `long-chk-${index}`;
+      longContainer.innerHTML += `
+        <div class="moduled-table-row">
+          <div>${name}</div>
+          <div>${desc}</div>
+          <div><input type="checkbox" id="${checkboxId}" /></div>
+        </div>`;
+    });
+
+    const shortPanelRoots = [
+      document.getElementById('moduled-tab-0'),
+      document.getElementById('moduled-tab-1'),
+      document.getElementById('moduled-tab-2'),
+    ];
+    const tabWrapperList = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
+    const tabContainer = tabWrapperList.length >= 2 ? tabWrapperList[1] : null;
+    if (!tabContainer) return console.warn('未找到短期活动 tab');
+    const tabs = tabContainer.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    async function clickAndExtractTabs() {
+      for (let i = 0; i < tabs.length; i++) {
+        const tab = tabs[i];
+        tab.click();
+        await delay(600);
+
+        const rows = document.querySelectorAll('tbody tr');
+        const container = shortPanelRoots[i] || shortPanelRoots[0];
+
+        container.innerHTML = `
+          <div class="moduled-table-header">
+            <div>活动主题</div>
+            <div>报名时间</div>
+            <div>活动时间</div>
+            <div>已报名</div>
+            <div>是否报名</div>
+          </div>
+        `;
+
+        rows.forEach((row, index) => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length >= 5) {
+            const title = cells[0].innerText.trim();
+            const applyTime = cells[1].innerText.trim();
+            const actTime = cells[2].innerText.trim();
+            const joined = cells[3].innerText.trim();
+            const checkboxId = `short-chk-${i}-${index}`;
+
+            container.innerHTML += `
+              <div class="moduled-table-row">
+                <div>${title}</div>
+                <div>${applyTime}</div>
+                <div>${actTime}</div>
+                <div>${joined}</div>
+                <div><input type="checkbox" id="${checkboxId}" /></div>
+              </div>
+            `;
+          }
         });
-
-        console.log(`📄 第 ${page++} 页，共抓取 ${list.length} 条`);
-        await new Promise(r => setTimeout(r, 300));
-      } catch (e) {
-        console.error('❌ 抓取失败：', e);
-        break;
       }
     }
 
-    console.log('✅ 所有商品抓取完成，总数：', allProducts.length);
-    console.table(allProducts);
+    clickAndExtractTabs();
   }
 
   window.__moduled_plugin__ = () => {
