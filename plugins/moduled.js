@@ -145,9 +145,74 @@
         document.getElementById('moduled-tab-' + tab.dataset.tab).classList.add('active');
       };
     });
+  document.getElementById('moduled-submit').insertAdjacentHTML('beforebegin', `
+  <div style="margin-bottom:10px;">
+    <input type="text" id="moduled-activity-id" placeholder="活动 ID 抓取商品测试" style="width:100%;padding:6px;margin-top:10px;" />
+    <button id="moduled-fetch-products" style="margin-top:6px;padding:6px 12px;">抓取商品数据</button>
+  </div>
+`);
+document.getElementById('moduled-fetch-products').onclick = fetchAllProducts;
 
+    
     fetchActivityData();
+    
   }
+function fetchAllProducts() {
+  const actIdInput = document.querySelector('input[placeholder*="活动ID"]') || document.querySelector('#moduled-settings input[type="text"]');
+  const actId = actIdInput?.value?.trim();
+
+  if (!actId) return alert("请填写活动 ID");
+
+  const allData = [];
+  let searchContext = null;
+  let page = 1;
+
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  async function fetchPage() {
+    const payload = {
+      activityId: actId,
+      pageSize: 50,
+    };
+    if (searchContext) {
+      payload.searchScrollContext = searchContext;
+    }
+
+    const res = await fetch('/api/kiana/gambers/sesemi/scroll/match', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      credentials: 'include'
+    });
+
+    if (!res.ok) {
+      console.error("❌ 抓取失败，状态码：", res.status);
+      return;
+    }
+
+    const result = await res.json();
+    const list = result?.data?.records || [];
+    searchContext = result?.data?.searchScrollContext || null;
+
+    console.log(`📄 第 ${page++} 页，抓取 ${list.length} 条`);
+    allData.push(...list);
+
+    if (list.length > 0 && searchContext) {
+      await delay(500);
+      await fetchPage();
+    } else {
+      console.log("✅ 抓取完成，总数：", allData.length);
+      console.log(allData);
+    }
+  }
+
+  fetchPage();
+}
+
+
+
 
   function fetchActivityData() {
     const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
