@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         活动报名插件 V3.5（短期活动修复）
+// @name         活动报名插件 V3.6（含商品抓取功能）
 // @namespace    https://yourdomain.com
-// @version      3.5.0
-// @description  支持短期活动分组抓取，限时促销、秒杀进阶、清仓进阶分类准确
-// @match        https://*.kuajingmaihuo.com/*
+// @version      3.6.0
+// @description  长短期活动报名工具，含商品抓取功能
+// @match        https://agentseller.temu.com/*
 // @grant        GM_addStyle
 // ==/UserScript==
 
@@ -96,7 +96,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.5 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 3.6 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -145,74 +145,18 @@
         document.getElementById('moduled-tab-' + tab.dataset.tab).classList.add('active');
       };
     });
-  document.getElementById('moduled-submit').insertAdjacentHTML('beforebegin', `
-  <div style="margin-bottom:10px;">
-    <input type="text" id="moduled-activity-id" placeholder="活动 ID 抓取商品测试" style="width:100%;padding:6px;margin-top:10px;" />
-    <button id="moduled-fetch-products" style="margin-top:6px;padding:6px 12px;">抓取商品数据</button>
-  </div>
-`);
-document.getElementById('moduled-fetch-products').onclick = fetchAllProducts;
 
-    
+    // 插入抓取商品功能输入框和按钮
+    document.getElementById('moduled-submit').insertAdjacentHTML('beforebegin', `
+      <div style="margin-bottom:10px;">
+        <input type="text" id="moduled-activity-id" placeholder="活动 ID 抓取商品测试" style="width:100%;padding:6px;margin-top:10px;" />
+        <button id="moduled-fetch-products" style="margin-top:6px;padding:6px 12px;">抓取商品数据</button>
+      </div>
+    `);
+    document.getElementById('moduled-fetch-products').onclick = fetchAllProducts;
+
     fetchActivityData();
-    
   }
-function fetchAllProducts() {
-  const actIdInput = document.querySelector('input[placeholder*="活动ID"]') || document.querySelector('#moduled-settings input[type="text"]');
-  const actId = actIdInput?.value?.trim();
-
-  if (!actId) return alert("请填写活动 ID");
-
-  const allData = [];
-  let searchContext = null;
-  let page = 1;
-
-  const delay = ms => new Promise(r => setTimeout(r, ms));
-
-  async function fetchPage() {
-    const payload = {
-      activityId: actId,
-      pageSize: 50,
-    };
-    if (searchContext) {
-      payload.searchScrollContext = searchContext;
-    }
-
-    const res = await fetch('/api/kiana/gambers/sesemi/scroll/match', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      credentials: 'include'
-    });
-
-    if (!res.ok) {
-      console.error("❌ 抓取失败，状态码：", res.status);
-      return;
-    }
-
-    const result = await res.json();
-    const list = result?.data?.records || [];
-    searchContext = result?.data?.searchScrollContext || null;
-
-    console.log(`📄 第 ${page++} 页，抓取 ${list.length} 条`);
-    allData.push(...list);
-
-    if (list.length > 0 && searchContext) {
-      await delay(500);
-      await fetchPage();
-    } else {
-      console.log("✅ 抓取完成，总数：", allData.length);
-      console.log(allData);
-    }
-  }
-
-  fetchPage();
-}
-
-
-
 
   function fetchActivityData() {
     const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
@@ -230,59 +174,92 @@ function fetchAllProducts() {
         </div>`;
     });
 
-    fetchShortTermActivities();
-  }
-
-  async function fetchShortTermActivities() {
     const shortPanelRoots = [
       document.getElementById('moduled-tab-0'),
       document.getElementById('moduled-tab-1'),
       document.getElementById('moduled-tab-2'),
     ];
-    const tabWrapperList = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
-    const tabContainer = tabWrapperList.length >= 2 ? tabWrapperList[1] : null;
-    if (!tabContainer) return console.warn('❌ 未找到短期活动 tab');
-
-    const tabs = tabContainer.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+    const tabContainers = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
+    const secondTabs = tabContainers.length >= 2 ? tabContainers[1].querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]') : [];
     const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-    for (let i = 0; i < tabs.length; i++) {
-      tabs[i].click();
-      await delay(800);
-
-      const container = shortPanelRoots[i] || shortPanelRoots[0];
-      container.innerHTML = `
-        <div class="moduled-table-header">
-          <div>活动主题</div>
-          <div>报名时间</div>
-          <div>活动时间</div>
-          <div>已报名</div>
-          <div>是否报名</div>
-        </div>
-      `;
-
-      const rows = document.querySelectorAll('[data-testid="beast-core-table-body-tr"]');
-      rows.forEach((row, index) => {
-        const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
-        if (cells.length >= 5) {
-          const title = cells[0].innerText.trim();
-          const applyTime = cells[1].innerText.trim();
-          const actTime = cells[2].innerText.trim();
-          const joined = cells[3].innerText.trim();
-          const checkboxId = `short-chk-${i}-${index}`;
-
-          container.innerHTML += `
-            <div class="moduled-table-row">
-              <div>${title}</div>
-              <div>${applyTime}</div>
-              <div>${actTime}</div>
-              <div>${joined}</div>
-              <div><input type="checkbox" id="${checkboxId}" /></div>
-            </div>
-          `;
-        }
-      });
+    async function clickAndExtractTabs() {
+      for (let i = 0; i < secondTabs.length; i++) {
+        const tab = secondTabs[i];
+        tab.click();
+        await delay(800);
+        const rows = document.querySelectorAll('[data-testid="beast-core-table-body-tr"]');
+        const container = shortPanelRoots[i] || shortPanelRoots[0];
+        container.innerHTML = `
+          <div class="moduled-table-header">
+            <div>活动主题</div>
+            <div>报名时间</div>
+            <div>活动时间</div>
+            <div>已报名</div>
+            <div>是否报名</div>
+          </div>
+        `;
+        rows.forEach((row, index) => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length >= 5) {
+            const title = cells[0].innerText.trim();
+            const applyTime = cells[1].innerText.trim();
+            const actTime = cells[2].innerText.trim();
+            const joined = cells[3].innerText.trim();
+            const checkboxId = `short-chk-${i}-${index}`;
+            container.innerHTML += `
+              <div class="moduled-table-row">
+                <div>${title}</div>
+                <div>${applyTime}</div>
+                <div>${actTime}</div>
+                <div>${joined}</div>
+                <div><input type="checkbox" id="${checkboxId}" /></div>
+              </div>
+            `;
+          }
+        });
+      }
     }
+
+    clickAndExtractTabs();
+  }
+
+  function fetchAllProducts() {
+    const activityId = document.getElementById('moduled-activity-id').value.trim();
+    if (!activityId) return alert('请填写活动 ID');
+
+    console.log('[抓取商品] 活动ID:', activityId);
+
+    const url = '/api/kiana/ambers/semu/scroll/match';
+    const payload = {
+      pageSize: 100,
+      pageNum: 1,
+      scrollContext: null,
+      activityId: activityId
+    };
+
+    let all = [];
+    const fetchNext = async () => {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json;charset=UTF-8' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) return console.error('请求失败:', res.status);
+      const json = await res.json();
+      const list = json?.data?.list || [];
+      const scrollContext = json?.data?.scrollContext;
+      all.push(...list);
+      if (scrollContext) {
+        payload.scrollContext = scrollContext;
+        payload.pageNum++;
+        await fetchNext();
+      } else {
+        console.log('[抓取完毕] 总数:', all.length);
+        console.log(all);
+      }
+    };
+    fetchNext();
   }
 
   window.__moduled_plugin__ = () => {
