@@ -75,11 +75,21 @@
       }
     }, 300); // 等 UI 插入 DOM 后再绑定事件
   }
+function getAntiContent() {
+    if (typeof window.__AFE__?.getAntiContent === 'function') {
+      return window.__AFE__.getAntiContent();
+    }
+    if (typeof window.ANTI?.get === 'function') {
+      return window.ANTI.get();
+    }
+    console.warn('⚠️ 未找到 anti-content 生成函数');
+    return 'manual-anti-placeholder';
+  }
 
   function fetchProducts(activityId, scrollContext = "") {
     const cookie = document.cookie;
     const mallid = '634418223153529';
-    const anti = '0aqAfoiZYiGNy99Vjnmalvu7E_DKXGD36t7WjztF-KvkIvZS7gtjNceMGjmyhEy5Enyd3amas7m62JyBoZlDctJAWctxBiL6KrW7gMp_5uAs4cv5vmnCywX15gpCSjyaePYMkkfTk5Z3jovwUfB9Lkb541qt-_tmsBwGsi7wme1fF3zXdcPbMTJI4gDlO4B8gzz4j8I1F7cO5bJKMic3JAzHlAEnhEH30U8XI8tLm34524m9AKXnqYCNA8esGoEkKlyMv3oPEVVLa4dAjxBkpbBRjjCTV8cCeFoI0domkovdXNxo71HJRGtHGBIEoAdzYhuiO3WPQZ9CzjB2RUtkX_5nBBBl_hCqbg5mUfBqlmxGWOemZxxDZBYa1UmVSvW0vIMK2WPoG3y1XhYslgNKcpLcq_YYHTWwUpkqIBS2K_8RalJY51OoxXXMWLbL8RAQZo83Qe-gN7nuMV-6XwnAKVm3QzSvMOkA4Ju7rjqh7aSqo0BZE6hPrzTgTq';
+    const anti = getAntiContent();
     const body = {
       activityType: 13,
       activityThematicId: Number(activityId),
@@ -102,7 +112,7 @@
       },
       data: JSON.stringify(body),
       onload(res) {
-        console.log('🎯 返回数据：', res.responseText);
+        console.log('🎯 返回结果：', res.responseText);
       }
     });
   }
