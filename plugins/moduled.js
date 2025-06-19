@@ -188,7 +188,7 @@
         url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
         headers: {
           'Content-Type': 'application/json',
-          'Anti-Content': '' // 如需加上最新值请替换
+          'Anti-Content': 'eyJ0b3RhbCI6NDEwMSwic2Nyb2xsQ291bnQiOjEwMCwic2Nyb2xsQ29udGV4dCI6eyJzb3J0U3RyIjoie1wic29ydFwiOlt7XCJwcm9kdWN0X2lkXCI6e1wib3JkZXJcIjpcImRlc2NcIn19XX0iLCJjb250ZXh0QXJnTmFtZSI6InNjcm9sbENvbnRleHQiLCJzb3J0VmFsdWVzIjpbOTc0Nzg2NjA5Nl19LCJoYXNNb3JlIjp0cnVlLCJzdGlsbENvdW50Ijo0MDAxfQ==' // 如需加上最新值请替换
         },
         data: JSON.stringify(postData),
         onload: function (res) {
