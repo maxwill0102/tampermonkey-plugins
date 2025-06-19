@@ -14,7 +14,7 @@
   'use strict';
 
   const FULL_COOKIE = `api_uid=CnGDF2hFMdu/OhFcQmzwAg==; dilx=zH3hWrGXMBu9elzJ3-ZFz; _nano_fp=XpmYlpTynpCjnqdyX9_KvaW_n_5~6c7iwo23whca; timezone=Asia%2FShanghai; webp=1; _bee=7uIHozziQLQMoPIvyIDALbcXydKkca0H; njrpl=7uIHozziQLQMoPIvyIDALbcXydKkca0H; hfsc=L3yOcYo27Dz50ZTOcQ==; seller_temp=N_eyJ0IjoiTmFZT3BxbUpxTk0wMTl4dGw4NVRmVjdOTENPRnNsWFE2QUNlKzZsNU84RDZUbjFoQkVURXUzdE5NSVE5eE43LzV3TUFzbG9iNm9taHc5Tzd0enlRNGc9PSIsInYiOjEsInMiOjEwMDAxLCJ1IjoyNDA3NjI2ODY3MzE5OX0=; mallid=634418223153529`;
-  const ANTI_CONTENT = `0aqAf...ZCGZTSFhgq6wTtag...`; // 🔁 替换为抓包得到的 Anti-Content
+  const ANTI_CONTENT = `0aqAfoixYySYj9E2J0didyxgjRAwIqP2ID3kKGzdvqe84kyjIs4HyQfYOmjkrrze-crCiTnixgSUJIf0UKVZgmvQ75Eo_Bl6DEfLU9TF9-475E8cqUGNjYTATLJVJJqWySNB6kUA-xv1ltrWo4j80KfDIeHrC4H_5ekuK9QxQhAxvj9Q_P7hDAT4RTMrofxM5qYQUWAPzhC0WP-cTojUGQUfhZBM448owrxCtZ01vN9jxWjo087lM5hcCnRcBL02IflDP6slH4jZfiC0WUuiDbCQaXnHP7N_2x4t8H9RY2Xbs7UzRP17UlcguQbXRT1XElhr0AuaDJRDMSn88Ai5HNunGj2yyqMNtAcvWouNUwqAud9jnG__Z_Exp1l7pVnYYSB-Ub2L5IXRayS5QKvxL9vyu6BntuXBYSR2a8nqQ5RwjMStfIcXj6a5sljEe5FpqKek4ZlKK3GVq-2gw-2b_dcP0s_PPp3DKJuLtomM_QrzMFzESn2Ues4L4ZfSSRvdfXpV90GmEsbKvnlyvbJdmKkAmwpH-GzctDI4Z8bBkSO1eFK1yZCGZTSFhgq6wTtag96vwP0rvpgOMzEVgnwqkgs7hGqPOdzrdhgqKRZu4Y61vLS31aj1ZcDOoaPHL52nPmkd4bKAA8W_LvnOSy28dLdpDOIj2afFRvTt51-fsn-_ICH1KfzO0ZR-szvBDmKjJB_QffwpggAygXKvEYnFkTP5gWr28VB64SU3lrVVNArqnrc6ZrDgYcQYVAqQz1JXvLXeXGVaRTGqi8K1eWqLiVWK0ronxlyU2gJ`; // 🔁 替换为抓包得到的 Anti-Content
 
   const style = `
     #moduled-drawer { position:fixed; top:0; right:0; width:780px; height:100%; background:#fff; border-left:1px solid #ccc; z-index:999999; overflow-y:auto; font-family:Arial; box-shadow:-2px 0 8px rgba(0,0,0,0.2); }
