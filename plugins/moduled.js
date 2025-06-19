@@ -77,6 +77,7 @@
     console.error("❌ 网络错误：", err);
   }
 });
+  }
 
   function addProductFetcherUI() {
     const container = document.createElement('div');
