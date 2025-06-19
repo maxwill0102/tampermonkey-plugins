@@ -188,7 +188,7 @@
         url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
         headers: {
           'Content-Type': 'application/json',
-          'Anti-Content': 'eyJ0b3RhbCI6NDEwMSwic2Nyb2xsQ291bnQiOjEwMCwic2Nyb2xsQ29udGV4dCI6eyJzb3J0U3RyIjoie1wic29ydFwiOlt7XCJwcm9kdWN0X2lkXCI6e1wib3JkZXJcIjpcImRlc2NcIn19XX0iLCJjb250ZXh0QXJnTmFtZSI6InNjcm9sbENvbnRleHQiLCJzb3J0VmFsdWVzIjpbOTc0Nzg2NjA5Nl19LCJoYXNNb3JlIjp0cnVlLCJzdGlsbENvdW50Ijo0MDAxfQ==' // 如需加上最新值请替换
+          'Anti-Content': '0aqAfoixYySYj9E2J0didyxgjRAwIqP2ID3kKGzdvqe84kyjIs4HyQfYOmjkrrze-crCiTnixgSUJIf0UKVZgmvQ75Eo_Bl6DEfLU9TF9-475E8cqUGNjYTATLJVJJqWySNB6kUA-xv1ltrWo4j80KfDIeHrC4H_5ekuK9QxQhAxvj9Q_P7hDAT4RTMrofxM5qYQUWAPzhC0WP-cTojUGQUfhZBM448owrxCtZ01vN9jxWjo087lM5hcCnRcBL02IflDP6slH4jZfiC0WUuiDbCQaXnHP7N_2x4t8H9RY2Xbs7UzRP17UlcguQbXRT1XElhr0AuaDJRDMSn88Ai5HNunGj2yyqMNtAcvWouNUwqAud9jnG__Z_Exp1l7pVnYYSB-Ub2L5IXRayS5QKvxL9vyu6BntuXBYSR2a8nqQ5RwjMStfIcXj6a5sljEe5FpqKek4ZlKK3GVq-2gw-2b_dcP0s_PPp3DKJuLtomM_QrzMFzESn2Ues4L4ZfSSRvdfXpV90GmEsbKvnlyvbJdmKkAmwpH-GzctDI4Z8bBkSO1eFK1yZCGZTSFhgq6wTtag96vwP0rvpgOMzEVgnwqkgs7hGqPOdzrdhgqKRZu4Y61vLS31aj1ZcDOoaPHL52nPmkd4bKAA8W_LvnOSy28dLdpDOIj2afFRvTt51-fsn-_ICH1KfzO0ZR-szvBDmKjJB_QffwpggAygXKvEYnFkTP5gWr28VB64SU3lrVVNArqnrc6ZrDgYcQYVAqQz1JXvLXeXGVaRTGqi8K1eWqLiVWK0ronxlyU2gJ' // 如需加上最新值请替换
         },
         data: JSON.stringify(postData),
         onload: function (res) {
