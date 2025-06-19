@@ -88,7 +88,7 @@ function getAntiContent() {
 
   function fetchProducts(activityId, scrollContext = "") {
     const cookie = document.cookie;
-    const mallid = '634418223153529';
+    const mallid = '634418224499212';
     const anti = getAntiContent();
     const body = {
       activityType: 13,
