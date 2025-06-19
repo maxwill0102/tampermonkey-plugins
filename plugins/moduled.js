@@ -42,37 +42,41 @@
     console.log("📦 [抓取商品] 请求参数:", data);
 
     GM_xmlhttpRequest({
-      method: 'POST',
-      url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
-      headers: {
-        'content-type': 'application/json',
-        'anti-content': ANTI_CONTENT,
-        'cookie': FULL_COOKIE,
-        'mallid': '634418223153529',
-        'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
-        'user-agent': navigator.userAgent
-      },
-      data: JSON.stringify(data),
-      onload: function (res) {
-        if (res.status === 200) {
-          try {
-            const json = JSON.parse(res.responseText);
-            const list = json?.data?.matchList || [];
-            const nextCtx = json?.data?.searchScrollContext;
-            console.log("🎯 可报名商品数据：", list);
-            console.log("📌 下一页上下文：", nextCtx);
-          } catch (e) {
-            console.error("❌ JSON解析失败", e);
-          }
-        } else {
-          console.error("❌ 请求失败，状态码：", res.status, res.responseText);
-        }
-      },
-      onerror: function (err) {
-        console.error("❌ 网络错误：", err);
+  method: 'POST',
+  url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
+  headers: {
+    'content-type': 'application/json',
+    'anti-content': ANTI_CONTENT,
+    'cookie': FULL_COOKIE,
+    'mallid': '634418223153529'
+    // ⚠️ 删除 referer 和 user-agent（更安全）
+  },
+  data: JSON.stringify({
+    activityType: 13,
+    activityThematicId: Number(activityId),
+    rowCount: 50,
+    addSite: true,
+    searchScrollContext: scrollContext
+  }),
+  onload: function (res) {
+    if (res.status === 200) {
+      try {
+        const json = JSON.parse(res.responseText);
+        const list = json?.data?.matchList || [];
+        const nextCtx = json?.data?.searchScrollContext;
+        console.log("🎯 可报名商品数据：", list);
+        console.log("📌 下一页上下文：", nextCtx);
+      } catch (e) {
+        console.error("❌ JSON解析失败", e);
       }
-    });
+    } else {
+      console.error("❌ 请求失败，状态码：", res.status, res.responseText);
+    }
+  },
+  onerror: function (err) {
+    console.error("❌ 网络错误：", err);
   }
+});
 
   function addProductFetcherUI() {
     const container = document.createElement('div');
