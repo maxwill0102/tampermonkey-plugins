@@ -224,6 +224,7 @@
   }
 
   function getAntiContent() {
+    const manul-anti='0aqWtai5Yjoyy99ZZj_16bfIwlX17l2IAde3bgYxz__6q7F_ps-zpTBSDYXRm4oQkRA32HPPz06UU9V_-9_wyu7x53z2YIxN_obBJvIZlr-yDTSCzd_cnHzyqiHAbRgCDxKojka7uXYBEaobWmMH-MTeI7q8vo0f26dDODseBlAOW_n18-5sGHbSGo4pnZyY2pEvW8g41F5ElwFqJAzFm66Dmiwnvhfbo_j8X9wA464lHeu0XPUDmzTHgrOXkiN70gextmSMuV8EwA3ADAWnJsk8V38TWpkgW7WPjYWg59BXqmDfh8-3jafe59AVhIwqY0lkR2a9sqKaxjw4cCk9woE8wXlX2lOqskAHVxFeij8wmzrnQ5i8wD4UxSekJpumKB7Tsydk1Z-9zu0xRwAMCtg-8EzY3fdFwyGMmzQ3pwOC4gKYOFaF9BLrjXnNipqN35p5bCpYgKXCxf_5Cadbw7viFeXJ6dirc6x0AJ_mQ4JdrNRDNSiAOWGQrJaYPVmARZ_u1bJKymUDojS3CTBxoECJiKiFGDlBqQjF2sg';
     try {
       if (window.__AFE__?.getAntiContent) {
         return window.__AFE__.getAntiContent();
@@ -232,7 +233,7 @@
       }
     } catch (e) {}
     console.warn("⚠️ 未能自动获取 anti-content，将使用占位值");
-    return "manual-anti-placeholder";
+    return manul-anti;
   }
 
   window.__moduled_plugin__ = () => {
