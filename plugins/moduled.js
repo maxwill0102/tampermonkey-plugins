@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         活动报名插件 V3.8（修复按钮事件）
+// @name         活动报名插件 V3.9（分页+自动anti）
 // @namespace    https://yourdomain.com
-// @version      3.8.1
-// @description  修复抓取商品按钮点击无效的问题
+// @version      3.9.0
+// @description  支持短期活动分组抓取，增强抓取商品支持分页与 Headers
 // @match        https://*.kuajingmaihuo.com/*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
@@ -36,7 +36,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.8 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 3.9 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -51,40 +51,126 @@
         <div class="moduled-input-group"><label>输入活动ID测试商品抓取</label><input type="text" id="moduled-activity-id-input" placeholder="输入活动ID" /></div>
         <div><button id="moduled-fetch-products">抓取商品数据</button></div>
       </div>
+      <div class="moduled-section">
+        <strong>长期活动</strong>
+        <div id="moduled-long"></div>
+      </div>
+      <div class="moduled-section">
+        <strong>短期活动</strong>
+        <div class="moduled-tabs">
+          <div class="moduled-tab active" data-tab="0">大促进阶</div>
+          <div class="moduled-tab" data-tab="1">秒杀进阶</div>
+          <div class="moduled-tab" data-tab="2">清仓进阶</div>
+        </div>
+        <div id="moduled-short-panels">
+          <div class="moduled-tab-panel active" id="moduled-tab-0"></div>
+          <div class="moduled-tab-panel" id="moduled-tab-1"></div>
+          <div class="moduled-tab-panel" id="moduled-tab-2"></div>
+        </div>
+      </div>
       <div class="moduled-section" style="text-align:center;">
         <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
       </div>
     `;
     document.body.appendChild(drawer);
-
     document.getElementById('moduled-close').onclick = () => drawer.remove();
     document.getElementById('moduled-price-mode').onchange = function () {
       document.getElementById('moduled-price-label').textContent =
         this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
 
-    // 🛠️ 修复绑定点击事件位置
-    setTimeout(() => {
-      const btn = document.getElementById('moduled-fetch-products');
-      if (btn) {
-        btn.onclick = () => {
-          const actId = document.getElementById('moduled-activity-id-input').value.trim();
-          if (actId) fetchProducts(actId);
-          else alert("请输入活动ID");
-        };
+    document.querySelectorAll('.moduled-tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.moduled-tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('moduled-tab-' + tab.dataset.tab).classList.add('active');
+      };
+    });
+
+    document.getElementById('moduled-fetch-products').onclick = () => {
+      const actId = document.getElementById('moduled-activity-id-input').value.trim();
+      if (actId) {
+        allFetchedProducts = [];
+        fetchProducts(actId);
       }
-    }, 300); // 等 UI 插入 DOM 后再绑定事件
+    };
+
+    fetchActivityData();
   }
-function getAntiContent() {
-    if (typeof window.__AFE__?.getAntiContent === 'function') {
-      return window.__AFE__.getAntiContent();
-    }
-    if (typeof window.ANTI?.get === 'function') {
-      return window.ANTI.get();
-    }
-    console.warn('⚠️ 未找到 anti-content 生成函数');
-    return 'manual-anti-placeholder';
+
+  function fetchActivityData() {
+    const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
+    const longContainer = document.getElementById('moduled-long');
+    longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
+    longList.forEach((el, index) => {
+      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
+      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
+      const checkboxId = `long-chk-${index}`;
+      longContainer.innerHTML += `
+        <div class="moduled-table-row">
+          <div>${name}</div>
+          <div>${desc}</div>
+          <div><input type="checkbox" id="${checkboxId}" /></div>
+        </div>`;
+    });
+
+    fetchShortTermActivities();
   }
+
+  async function fetchShortTermActivities() {
+    const shortPanelRoots = [
+      document.getElementById('moduled-tab-0'),
+      document.getElementById('moduled-tab-1'),
+      document.getElementById('moduled-tab-2'),
+    ];
+    const tabWrapperList = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
+    const tabContainer = tabWrapperList.length >= 2 ? tabWrapperList[1] : null;
+    if (!tabContainer) return console.warn('❌ 未找到短期活动 tab');
+
+    const tabs = tabContainer.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    for (let i = 0; i < tabs.length; i++) {
+      tabs[i].click();
+      await delay(800);
+
+      const container = shortPanelRoots[i] || shortPanelRoots[0];
+      container.innerHTML = `
+        <div class="moduled-table-header">
+          <div>活动主题</div>
+          <div>报名时间</div>
+          <div>活动时间</div>
+          <div>已报名</div>
+          <div>是否报名</div>
+        </div>
+      `;
+
+      const rows = document.querySelectorAll('[data-testid="beast-core-table-body-tr"]');
+      rows.forEach((row, index) => {
+        const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
+        if (cells.length >= 5) {
+          const title = cells[0].innerText.trim();
+          const applyTime = cells[1].innerText.trim();
+          const actTime = cells[2].innerText.trim();
+          const joined = cells[3].innerText.trim();
+          const checkboxId = `short-chk-${i}-${index}`;
+
+          container.innerHTML += `
+            <div class="moduled-table-row">
+              <div>${title}</div>
+              <div>${applyTime}</div>
+              <div>${actTime}</div>
+              <div>${joined}</div>
+              <div><input type="checkbox" id="${checkboxId}" /></div>
+            </div>
+          `;
+        }
+      });
+    }
+  }
+
+  let allFetchedProducts = [];
 
   function fetchProducts(activityId, scrollContext = "") {
     const cookie = document.cookie;
@@ -112,9 +198,41 @@ function getAntiContent() {
       },
       data: JSON.stringify(body),
       onload(res) {
-        console.log('🎯 返回结果：', res.responseText);
+        try {
+          const result = JSON.parse(res.responseText);
+          const list = result?.data?.matchList || [];
+          const nextCtx = result?.data?.searchScrollContext || "";
+          const hasMore = result?.data?.hasMore || false;
+
+          allFetchedProducts = allFetchedProducts.concat(list);
+          console.log(`✅ 累计商品数：${allFetchedProducts.length}`);
+
+          if (hasMore && nextCtx) {
+            setTimeout(() => fetchProducts(activityId, nextCtx), 1200);
+          } else {
+            console.log("🎉 所有分页抓取完成，总商品数：", allFetchedProducts.length);
+            console.log("📦 商品数据：", allFetchedProducts);
+          }
+        } catch (e) {
+          console.error("❌ JSON解析失败", e);
+        }
+      },
+      onerror(err) {
+        console.error("❌ 抓取失败：", err);
       }
     });
+  }
+
+  function getAntiContent() {
+    try {
+      if (window.__AFE__?.getAntiContent) {
+        return window.__AFE__.getAntiContent();
+      } else if (window.ANTI?.get) {
+        return window.ANTI.get();
+      }
+    } catch (e) {}
+    console.warn("⚠️ 未能自动获取 anti-content，将使用占位值");
+    return "manual-anti-placeholder";
   }
 
   window.__moduled_plugin__ = () => {
