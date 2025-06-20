@@ -109,6 +109,9 @@
 // ... 前面样式和UI代码保持不变 ...
 
   // 递归获取所有商品
+// ... 前面样式和UI代码保持不变 ...
+
+  // 递归获取所有商品
   function fetchProducts(activityId, scrollContext = "") {
     if (isFetching) return;
     isFetching = true;
@@ -128,78 +131,79 @@
       searchScrollContext: scrollContext || ""
     };
 
-    GM_xmlhttpRequest({
-      method: 'POST',
-      url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
-      headers: {
-        'content-type': 'application/json',
-        'cookie': cookie,
-        'mallid': mallid,
-        'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
-        'anti-content': anti,
-        'origin': 'https://agentseller.temu.com',
-        'user-agent': navigator.userAgent
-      },
-      data: JSON.stringify(body),
-      onload(res) {
-        try {
-          const data = JSON.parse(res.responseText);
-          console.log('API完整响应:', data);  // 调试输出
-          
-          // 1. 验证API返回状态
-          if (!data || !data.success) {
-            throw new Error(`API请求失败: ${data?.errorMsg || '未知错误'}`);
+    // 使用Promise封装GM_xmlhttpRequest
+    const requestPromise = new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method: 'POST',
+        url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
+        headers: {
+          'content-type': 'application/json',
+          'cookie': cookie,
+          'mallid': mallid,
+          'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
+          'anti-content': anti,
+          'origin': 'https://agentseller.temu.com',
+          'user-agent': navigator.userAgent
+        },
+        data: JSON.stringify(body),
+        onload: function(res) {
+          try {
+            const data = JSON.parse(res.responseText);
+            console.log('API完整响应:', data);
+            
+            if (!data || !data.success) {
+              reject(new Error(`API请求失败: ${data?.errorMsg || '未知错误'}`));
+              return;
+            }
+            
+            const products = data.result?.matchList;
+            
+            if (!products || !Array.isArray(products)) {
+              reject(new Error('商品数据格式错误'));
+              return;
+            }
+            
+            resolve({data, products});
+          } catch (e) {
+            reject(e);
           }
-          
-          // 2. 检查数据结构 - 商品在matchList字段中
-          const products = data.result?.matchList;
-          
-          if (!products || !Array.isArray(products)) {
-            throw new Error('商品数据格式错误');
-          }
-          
-          // 3. 添加到总列表
-          allProducts = [...allProducts, ...products];
-          productCountEl.textContent = `已获取商品: ${allProducts.length}`;
-          
-          // 4. 递归终止条件 - 检查是否有下一页
-          const nextScrollContext = data.result?.searchScrollContext;
-          const hasMore = data.result?.hasMore;
-          
-          if (hasMore && nextScrollContext) {
-            setTimeout(() => fetchProducts(activityId, nextScrollContext), 500);
-          } else {
-            finishFetching();
-          }
-        } catch (e) {
-          console.error('解析错误:', e, '响应数据:', res.responseText);
-          alert(`商品数据解析失败: ${e.message}`);
-          finishFetching();
+        },
+        onerror: function(err) {
+          reject(err);
+        },
+        ontimeout: function() {
+          reject(new Error('请求超时'));
         }
-      },
-      onerror(err) {
-        console.error('请求失败:', err);
-        alert('商品数据请求失败: ' + err.statusText);
-        finishFetching();
-      },
-      ontimeout() {
-        console.error('请求超时');
-        alert('请求超时，请重试');
-        finishFetching();
-      }
+      });
     });
 
-    function finishFetching() {
-      isFetching = false;
-      loadingEl.style.display = 'none';
-      
-      // 渲染商品列表
-      renderProducts();
-      
-      // 切换到商品标签页
-      document.querySelector('.moduled-tab[data-tab="products"]').click();
-    }
+    requestPromise
+      .then(({data, products}) => {
+        // 添加到总列表
+        allProducts = [...allProducts, ...products];
+        productCountEl.textContent = `已获取商品: ${allProducts.length}`;
+        
+        // 检查是否有下一页
+        const nextScrollContext = data.result?.searchScrollContext;
+        const hasMore = data.result?.hasMore;
+        
+        if (hasMore && nextScrollContext) {
+          // 使用setTimeout避免堆栈溢出
+          setTimeout(() => fetchProducts(activityId, nextScrollContext), 300);
+        } else {
+          finishFetching();
+        }
+      })
+      .catch((error) => {
+        console.error('请求错误:', error, '请求参数:', body);
+        alert(`商品数据获取失败: ${error.message}`);
+        finishFetching();
+      });
   }
+
+  // ... renderProducts 函数保持不变 ...
+
+// ... 剩余代码保持不变 ...
 
   // 渲染商品列表到界面
   function renderProducts() {
