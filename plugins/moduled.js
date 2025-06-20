@@ -30,15 +30,14 @@
   `;
   GM_addStyle(style);
 
-  let selectedActivities = []; // 勾选的活动列表
-  let submitting = false;
-function createDrawer() {
-    if (document.getElementById('moduled-drawer')) return;
+    let selectedActivities = [];
 
+  function createDrawer() {
+    if (document.getElementById('moduled-drawer')) return;
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 4.2 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 4.3 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -56,18 +55,38 @@ function createDrawer() {
         <div class="moduled-input-group"><label>输入活动ID测试商品抓取</label><input type="text" id="moduled-activity-id-input" placeholder="输入活动ID" /></div>
         <div><button id="moduled-fetch-products">抓取商品数据</button></div>
       </div>
+      <div class="moduled-section">
+        <strong>长期活动</strong>
+        <div id="moduled-long"></div>
+      </div>
+      <div class="moduled-section">
+        <strong>短期活动</strong>
+        <div class="moduled-tabs">
+          <div class="moduled-tab active" data-tab="0">大促进阶</div>
+          <div class="moduled-tab" data-tab="1">秒杀进阶</div>
+          <div class="moduled-tab" data-tab="2">清仓进阶</div>
+        </div>
+        <div id="moduled-short-panels">
+          <div class="moduled-tab-panel active" id="moduled-tab-0"></div>
+          <div class="moduled-tab-panel" id="moduled-tab-1"></div>
+          <div class="moduled-tab-panel" id="moduled-tab-2"></div>
+        </div>
+      </div>
       <div class="moduled-section" style="text-align:center;">
         <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
       </div>
     `;
     document.body.appendChild(drawer);
 
+    // 关闭按钮
     document.getElementById('moduled-close').onclick = () => drawer.remove();
+    // 价格模式切换
     document.getElementById('moduled-price-mode').onchange = function () {
       document.getElementById('moduled-price-label').textContent =
         this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
 
+    // 短期活动 Tab 切换
     document.querySelectorAll('.moduled-tab').forEach(tab => {
       tab.onclick = () => {
         document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
@@ -77,136 +96,61 @@ function createDrawer() {
       };
     });
 
+    // 抓取商品按钮
     setTimeout(() => {
       const btn = document.getElementById('moduled-fetch-products');
-      if (btn) {
-        btn.onclick = () => {
-          const actId = document.getElementById('moduled-activity-id-input').value.trim();
-          if (actId) fetchProducts(actId);
-          else alert("请输入活动ID");
-        };
-      }
+      if (btn) btn.onclick = () => {
+        const actId = document.getElementById('moduled-activity-id-input').value.trim();
+        if (actId) fetchProducts(actId);
+        else alert('请输入活动ID');
+      };
     }, 300);
 
+    // 初始化数据
     fetchActivityData();
+    fetchShortTermActivities();
 
+    // 提交报名
     document.getElementById('moduled-submit').onclick = () => {
       const priceVal = document.getElementById('moduled-price-input').value.trim();
       if (!priceVal) return alert('请填写活动价格');
-
       const mode = document.getElementById('moduled-price-mode').value;
       const stockVal = document.getElementById('moduled-stock-input').value.trim();
       const checked = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
-      selectedActivities = checked.map(el => ({ id: el.id, type: el.id.startsWith('long') ? 'long' : 'short' }));
-
+      selectedActivities = checked.map(el => el.id);
       if (selectedActivities.length === 0) return alert('请先选择要报名的活动');
-
       renderSubmitPage({ mode, priceVal, stockVal, total: selectedActivities.length });
     };
   }
 
-  function renderSubmitPage(config) {
-    const container = document.getElementById('moduled-drawer');
-    if (!container) return;
-
-    container.innerHTML = `
-      <h2>报名详情页 <span id="moduled-close">❌</span></h2>
-      <div class="moduled-section">
-        <p>价格方式：${config.mode === 'profit' ? '利润率不低于' : '价格不低于固定值'} ${config.priceVal}</p>
-        <p>活动库存：${config.stockVal || '默认'}</p>
-      </div>
-      <div class="moduled-section">
-        <p>当前活动：1 / ${config.total}</p>
-        <p>报名成功：0 / 0</p>
-        <p>未报名数量：0</p>
-      </div>
-      <div class="moduled-section">
-        <table border="1" cellspacing="0" cellpadding="5" width="100%">
-          <thead>
-            <tr><th>商品标题</th><th>SKC</th><th>日常价格</th><th>活动申报价格</th><th>是否满足报名条件</th><th>活动库存</th><th>是否报名成功</th></tr>
-          </thead>
-          <tbody id="product-rows">
-            <tr><td colspan="7" align="center">等待数据填充...</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="moduled-section" style="text-align:center">
-        <button id="pause-btn">暂停</button>
-      </div>
-    `;
-    document.getElementById('moduled-close').onclick = () => location.reload();
-  }
-  
-
   function fetchActivityData() {
-    const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
     const longContainer = document.getElementById('moduled-long');
-    longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
-    longList.forEach((el, index) => {
-      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
-      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
-      const checkboxId = `long-chk-${index}`;
-      longContainer.innerHTML += `
-        <div class="moduled-table-row">
-          <div>${name}</div>
-          <div>${desc}</div>
-          <div><input type="checkbox" id="${checkboxId}" /></div>
-        </div>`;
+    longContainer.innerHTML = '<div class="moduled-table-header"><div>类型</div><div>说明</div><div>是否报名</div></div>';
+    document.querySelectorAll('.act-item_actItem__x2Uci').forEach((el, idx) => {
+      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText.trim() || '';
+      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText.trim() || '';
+      longContainer.innerHTML += `<div class="moduled-table-row"><div>${name}</div><div>${desc}</div><div><input type="checkbox" id="long-${idx}" /></div></div>`;
     });
-    fetchShortTermActivities();
   }
 
   async function fetchShortTermActivities() {
-    const shortPanelRoots = [
-      document.getElementById('moduled-tab-0'),
-      document.getElementById('moduled-tab-1'),
-      document.getElementById('moduled-tab-2'),
-    ];
-    const tabWrapperList = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
-    const tabContainer = tabWrapperList.length >= 2 ? tabWrapperList[1] : null;
-    if (!tabContainer) return console.warn('❌ 未找到短期活动 tab');
-
-    const tabs = tabContainer.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
-    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-    for (let i = 0; i < tabs.length; i++) {
-      tabs[i].click();
-      await delay(800);
-
-      const container = shortPanelRoots[i] || shortPanelRoots[0];
-      container.innerHTML = `
-        <div class="moduled-table-header">
-          <div>活动主题</div>
-          <div>报名时间</div>
-          <div>活动时间</div>
-          <div>已报名</div>
-          <div>是否报名</div>
-        </div>
-      `;
-
-      const rows = document.querySelectorAll('[data-testid="beast-core-table-body-tr"]');
-      rows.forEach((row, index) => {
-        const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
-        if (cells.length >= 5) {
-          const title = cells[0].innerText.trim();
-          const applyTime = cells[1].innerText.trim();
-          const actTime = cells[2].innerText.trim();
-          const joined = cells[3].innerText.trim();
-          const checkboxId = `short-chk-${i}-${index}`;
-
-          container.innerHTML += `
-            <div class="moduled-table-row">
-              <div>${title}</div>
-              <div>${applyTime}</div>
-              <div>${actTime}</div>
-              <div>${joined}</div>
-              <div><input type="checkbox" id="${checkboxId}" /></div>
-            </div>
-          `;
-        }
+    const panels = [0,1,2].map(i => document.getElementById('moduled-tab-'+i));
+    const tabsRoot = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
+    if (tabsRoot.length<2) return;
+    const tabs = tabsRoot[1].querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+    const delay = ms=>new Promise(r=>setTimeout(r,ms));
+    for (let i=0;i<tabs.length;i++) {
+      tabs[i].click(); await delay(800);
+      const panel=panels[i];
+      panel.innerHTML='<div class="moduled-table-header"><div>主题</div><div>报名时间</div><div>活动时间</div><div>已报名</div><div>是否报名</div></div>';
+      document.querySelectorAll('[data-testid="beast-core-table-body-tr"]').forEach((row,j)=>{
+        const cells=row.querySelectorAll('[data-testid="beast-core-table-td"]');
+        if(cells.length>=5) panel.innerHTML+=`<div class="moduled-table-row"><div>${cells[0].innerText.trim()}</div><div>${cells[1].innerText.trim()}</div><div>${cells[2].innerText.trim()}</div><div>${cells[3].innerText.trim()}</div><div><input type="checkbox" id="short-${i}-${j}" /></div></div>`;
       });
     }
   }
+ 
+
 
   function fetchProducts(activityId, scrollContext = "") {
     const cookie = document.cookie;
