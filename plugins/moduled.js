@@ -1,3 +1,13 @@
+// ==UserScript==
+// @name         活动报名插件 V4.0（短期+长期+商品详情抓取）
+// @namespace    https://yourdomain.com
+// @version      4.0.0
+// @description  支持短期活动、长期活动展示及商品分页抓取
+// @match        https://*.kuajingmaihuo.com/*
+// @grant        GM_addStyle
+// @grant        GM_xmlhttpRequest
+// ==/UserScript==
+
 (function () {
   'use strict';
 
@@ -26,7 +36,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.8 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 4.0 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -41,8 +51,8 @@
         <div class="moduled-input-group"><label>输入活动ID测试商品抓取</label><input type="text" id="moduled-activity-id-input" placeholder="输入活动ID" /></div>
         <div><button id="moduled-fetch-products">抓取商品数据</button></div>
       </div>
-      <div class="moduled-section" style="text-align:center;">
-           <strong>长期活动</strong>
+      <div class="moduled-section">
+        <strong>长期活动</strong>
         <div id="moduled-long"></div>
       </div>
       <div class="moduled-section">
@@ -68,7 +78,6 @@
       document.getElementById('moduled-price-label').textContent =
         this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
-
     document.querySelectorAll('.moduled-tab').forEach(tab => {
       tab.onclick = () => {
         document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
@@ -77,7 +86,16 @@
         document.getElementById('moduled-tab-' + tab.dataset.tab).classList.add('active');
       };
     });
-
+    setTimeout(() => {
+      const btn = document.getElementById('moduled-fetch-products');
+      if (btn) {
+        btn.onclick = () => {
+          const actId = document.getElementById('moduled-activity-id-input').value.trim();
+          if (actId) fetchProducts(actId);
+          else alert("请输入活动ID");
+        };
+      }
+    }, 300);
     fetchActivityData();
   }
 
@@ -96,7 +114,6 @@
           <div><input type="checkbox" id="${checkboxId}" /></div>
         </div>`;
     });
-
     fetchShortTermActivities();
   }
 
@@ -151,26 +168,6 @@
       });
     }
   }
-    document.body.appendChild(drawer);
-
-    document.getElementById('moduled-close').onclick = () => drawer.remove();
-    document.getElementById('moduled-price-mode').onchange = function () {
-      document.getElementById('moduled-price-label').textContent =
-        this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
-    };
-
-    // 🛠️ 修复绑定点击事件位置
-    setTimeout(() => {
-      const btn = document.getElementById('moduled-fetch-products');
-      if (btn) {
-        btn.onclick = () => {
-          const actId = document.getElementById('moduled-activity-id-input').value.trim();
-          if (actId) fetchProducts(actId);
-          else alert("请输入活动ID");
-        };
-      }
-    }, 300); // 等 UI 插入 DOM 后再绑定事件
-  }
 
   function fetchProducts(activityId, scrollContext = "") {
     const cookie = document.cookie;
@@ -185,68 +182,53 @@
     };
 
     GM_xmlhttpRequest({
-    method: 'POST',
-    url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
-    headers: {
-      'content-type': 'application/json',
-      'cookie': cookie,
-      'mallid': mallid,
-      'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
-      'anti-content': anti,
-      'origin': 'https://agentseller.temu.com',
-      'user-agent': navigator.userAgent
-    },
-    data: JSON.stringify(body),
-    onload(res) {
-      try {
-        const data = JSON.parse(res.responseText);
-        if (!data.success || !data.result) {
-          console.error("❌ 接口返回异常", data);
-          alert("接口返回失败，请检查网络或参数");
-          return;
+      method: 'POST',
+      url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
+      headers: {
+        'content-type': 'application/json',
+        'cookie': cookie,
+        'mallid': mallid,
+        'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
+        'anti-content': anti,
+        'origin': 'https://agentseller.temu.com',
+        'user-agent': navigator.userAgent
+      },
+      data: JSON.stringify(body),
+      onload(res) {
+        try {
+          const data = JSON.parse(res.responseText);
+          if (!data.success || !data.result) return alert("接口失败");
+
+          const list = data.result.matchList || [];
+          const scrollCtx = data.result.searchScrollContext || "";
+          const hasMore = data.result.hasMore;
+
+          if (!window.__moduled_all_products__) window.__moduled_all_products__ = [];
+          window.__moduled_all_products__.push(...list);
+
+          console.log(`📦 当前批次 ${list.length} 条数据：`);
+          list.forEach((item, idx) => {
+            const productName = item.productName || '未知商品';
+            const productId = item.productId || '无ID';
+            console.log(`#${window.__moduled_all_products__.length - list.length + idx + 1}: ${productName} (ID: ${productId})`);
+          });
+
+          if (hasMore && scrollCtx) {
+            const delay = Math.floor(800 + Math.random() * 400);
+            console.log(`⏳ 等待 ${delay}ms 加载下一页...`);
+            setTimeout(() => fetchProducts(activityId, scrollCtx), delay);
+          } else {
+            console.log(`✅ 抓取完成：共 ${window.__moduled_all_products__.length} 条商品`);
+          }
+        } catch (e) {
+          console.error("❌ 解析失败", e);
         }
-
-        const list = data.result.matchList || [];
-        const scrollCtx = data.result.searchScrollContext || "";
-        const hasMore = data.result.hasMore;
-
-        // 初始化全局缓存变量
-        if (!window.__moduled_all_products__) {
-          window.__moduled_all_products__ = [];
-        }
-
-        // 添加当前批次数据
-        window.__moduled_all_products__.push(...list);
-
-        // ✅ 打印当前批次
-        console.log(`📦 当前批次 ${list.length} 条数据：`);
-        list.forEach((item, idx) => {
-          const productName = item.productName || '未知商品';
-          const productId = item.productId || '无ID';
-          console.log(`  #${window.__moduled_all_products__.length - list.length + idx + 1}: ${productName} (ID: ${productId})`);
-        });
-
-        // 是否继续递归
-        if (hasMore && scrollCtx) {
-          const delay = Math.floor(800 + Math.random() * 400); // 800~1200ms 延迟
-          console.log(`⏳ 等待 ${delay}ms 加载下一页...`);
-          setTimeout(() => {
-            fetchProducts(activityId, scrollCtx);
-          }, delay);
-        } else {
-          console.log(`✅ 商品抓取完成，共计 ${window.__moduled_all_products__.length} 条`);
-        }
-      } catch (e) {
-        console.error("❌ 返回数据解析失败", e);
-        alert("接口返回格式异常，无法解析");
+      },
+      onerror(err) {
+        console.error("❌ 请求失败", err);
       }
-    },
-    onerror(err) {
-      console.error("❌ 请求异常", err);
-      alert("网络请求失败，请检查cookie或登录状态");
-    }
-  });
-}
+    });
+  }
 
   window.__moduled_plugin__ = () => {
     createDrawer();
