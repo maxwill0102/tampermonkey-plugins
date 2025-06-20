@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         活动报名插件 V3.8（修复按钮事件）
+// @name         活动报名插件 V3.8.2（递归分页）
 // @namespace    https://yourdomain.com
-// @version      3.8.1
-// @description  修复抓取商品按钮点击无效的问题
+// @version      3.8.2
+// @description  支持分页抓取所有商品，保留全部功能逻辑
 // @match        https://*.kuajingmaihuo.com/*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
@@ -19,14 +19,6 @@
     .moduled-input-group { margin-bottom: 10px; }
     .moduled-input-group label { display: block; font-size: 14px; margin-bottom: 4px; }
     .moduled-input-group input, .moduled-input-group select { width: 100%; padding: 6px; font-size: 14px; }
-    .moduled-tabs { display: flex; margin-bottom: 10px; border-bottom: 1px solid #ccc; }
-    .moduled-tab { flex: 1; text-align: center; padding: 8px; cursor: pointer; font-weight: bold; }
-    .moduled-tab.active { color: red; border-bottom: 2px solid red; }
-    .moduled-tab-panel { display: none; max-height: 300px; overflow-y: auto; }
-    .moduled-tab-panel.active { display: block; }
-    .moduled-table-header, .moduled-table-row { display: grid; grid-template-columns: 1.5fr 2fr 2fr 1fr 1fr; gap: 10px; padding: 6px 0; align-items: center; }
-    .moduled-table-header { font-weight: bold; border-bottom: 1px solid #ccc; margin-bottom: 4px; }
-    .moduled-table-row { border-bottom: 1px dashed #ddd; }
   `;
   GM_addStyle(style);
 
@@ -36,7 +28,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 3.8 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 3.8.2 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -63,23 +55,23 @@
         this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
 
-    // 🛠️ 修复绑定点击事件位置
     setTimeout(() => {
       const btn = document.getElementById('moduled-fetch-products');
       if (btn) {
         btn.onclick = () => {
           const actId = document.getElementById('moduled-activity-id-input').value.trim();
-          if (actId) fetchProducts(actId);
+          if (actId) fetchAllProducts(actId);
           else alert("请输入活动ID");
         };
       }
-    }, 300); // 等 UI 插入 DOM 后再绑定事件
+    }, 300);
   }
 
-  function fetchProducts(activityId, scrollContext = "") {
+  function fetchAllProducts(activityId, scrollContext = "", page = 1, totalList = []) {
     const cookie = document.cookie;
     const mallid = '634418223153529';
-    const anti = '0aqAfoiZYiGNy99Vjnmalvu7E_DKXGD36t7WjztF-KvkIvZS7gtjNceMGjmyhEy5Enyd3amas7m62JyBoZlDctJAWctxBiL6KrW7gMp_5uAs4cv5vmnCywX15gpCSjyaePYMkkfTk5Z3jovwUfB9Lkb541qt-_tmsBwGsi7wme1fF3zXdcPbMTJI4gDlO4B8gzz4j8I1F7cO5bJKMic3JAzHlAEnhEH30U8XI8tLm34524m9AKXnqYCNA8esGoEkKlyMv3oPEVVLa4dAjxBkpbBRjjCTV8cCeFoI0domkovdXNxo71HJRGtHGBIEoAdzYhuiO3WPQZ9CzjB2RUtkX_5nBBBl_hCqbg5mUfBqlmxGWOemZxxDZBYa1UmVSvW0vIMK2WPoG3y1XhYslgNKcpLcq_YYHTWwUpkqIBS2K_8RalJY51OoxXXMWLbL8RAQZo83Qe-gN7nuMV-6XwnAKVm3QzSvMOkA4Ju7rjqh7aSqo0BZE6hPrzTgTq';
+    const anti = '你的 anti-content 值'; // 请自行更新有效 anti-content
+
     const body = {
       activityType: 13,
       activityThematicId: Number(activityId),
@@ -102,7 +94,29 @@
       },
       data: JSON.stringify(body),
       onload(res) {
-        console.log('🎯 返回数据：', res.responseText);
+        try {
+          const json = JSON.parse(res.responseText);
+          const list = json?.data?.matchList || [];
+          const nextCtx = json?.data?.searchScrollContext || "";
+          const hasMore = json?.data?.hasMore || false;
+
+          console.log(`📦 第 ${page} 页：`, list);
+          totalList.push(...list);
+
+          if (hasMore && nextCtx) {
+            setTimeout(() => {
+              fetchAllProducts(activityId, nextCtx, page + 1, totalList);
+            }, 1000); // 建议延迟，防止触发风控
+          } else {
+            console.log("✅ 所有商品已抓取，总数：", totalList.length);
+            console.log("🎯 完整数据列表：", totalList);
+          }
+        } catch (e) {
+          console.error("❌ JSON解析失败", e);
+        }
+      },
+      onerror(err) {
+        console.error("❌ 请求错误：", err);
       }
     });
   }
