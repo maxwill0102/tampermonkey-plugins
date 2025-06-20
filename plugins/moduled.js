@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         活动报名插件 V4.5 修正版
+// @name         活动报名插件 V4.6（整合 XHR 拦截 + 首批测试）
 // @namespace    https://yourdomain.com
-// @version      4.5.1
-// @description  支持价格校验、长期/短期活动展示、首批商品抓取测试
+// @version      4.6.1
+// @description  支持价格校验、长期/短期活动展示 + XHR 拦截 detail 请求自动提取参数 + 首批抓取测试
 // @match        https://*.kuajingmaihuo.com/*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
@@ -11,7 +11,7 @@
 (function() {
   'use strict';
 
-  // 一：样式（不动）
+  // === 样式保持不变 ===
   GM_addStyle(`
     #moduled-drawer { position: fixed; top:0; right:0; width:780px; height:100%; background:#fff; border-left:1px solid #ccc; z-index:999999; overflow-y:auto; font-family:Arial; box-shadow:-2px 0 8px rgba(0,0,0,0.2); }
     #moduled-drawer h2 { font-size:18px; padding:16px; margin:0; border-bottom:1px solid #eee; }
@@ -30,16 +30,44 @@
     .moduled-table-row { border-bottom:1px dashed #ddd; }
   `);
 
-  // 二：抓取并打印首批商品用于测试
+  // === XHR 拦截 detail 请求，自动提取 type/thematicId ===
+  let lastParams = null;
+  (function() {
+    const origOpen = XMLHttpRequest.prototype.open;
+    const origSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function(method, url) {
+      this._url = url;
+      return origOpen.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function(body) {
+      try {
+        if (this._url && this._url.includes('/detail') && body) {
+          const j = JSON.parse(body);
+          if (j.activityType && j.activityThematicId) {
+            lastParams = {
+              type: String(j.activityType),
+              thematicId: String(j.activityThematicId)
+            };
+            console.log('🔖 拦截 detail XHR，缓存参数：', lastParams);
+          }
+        }
+      } catch (e) {
+        console.warn('拦截 detail 解析失败', e);
+      }
+      return origSend.apply(this, arguments);
+    };
+  })();
+
+  // === 测试抓取首批商品数据 ===
   function fetchFirstBatch(type, thematicId) {
-    console.log(`📣 测试抓取首批：type=${type} thematicId=${thematicId}`);
+    console.log(`📣 测试抓取首批：type=${type}, thematicId=${thematicId}`);
     GM_xmlhttpRequest({
       method: 'POST',
       url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
       headers: {
-        'content-type':'application/json',
+        'Content-Type': 'application/json',
         'mallid': '634418223153529',
-        'anti-content': '请替换为你的 anti-content 值',
+        'anti-content': '<请替换 anti-content>',
         'referer': location.href,
         'origin': location.origin,
         'cookie': document.cookie,
@@ -53,90 +81,81 @@
         searchScrollContext: ''
       }),
       onload(res) {
-        let data;
-        try { data = JSON.parse(res.responseText); }
-        catch (e) { return console.error('❌ 返回解析失败', e); }
-        if (data.success && data.result && Array.isArray(data.result.matchList)) {
-          console.log('✅ 首批 matchList:', data.result.matchList);
-        } else {
-          console.warn('⚠️ 返回结构异常：', data);
+        try {
+          const data = JSON.parse(res.responseText);
+          if (data.success && data.result && Array.isArray(data.result.matchList)) {
+            console.log('✅ 首批 matchList:', data.result.matchList);
+          } else {
+            console.warn('⚠️ 接口返回异常:', data);
+          }
+        } catch (e) {
+          console.error('❌ JSON 解析失败:', e);
         }
       },
-      onerror(err) { console.error('❌ 请求错误', err); }
+      onerror(err) {
+        console.error('❌ 请求失败:', err);
+      }
     });
   }
 
-  // 三：渲染长期活动列表并注入 data- 属性
+  // === 渲染长期活动列表 ===
   function fetchActivityData() {
-    const longContainer = document.getElementById('moduled-long');
-    if (!longContainer) return;
-    longContainer.innerHTML = '<div class="moduled-table-header"><div>类型</div><div>说明</div><div>选择</div></div>';
+    const longCon = document.getElementById('moduled-long');
+    if (!longCon) return;
+    longCon.innerHTML = '<div class="moduled-table-header"><div>类型</div><div>说明</div><div>选择</div></div>';
     document.querySelectorAll('.act-item_actItem__x2Uci').forEach(el => {
-      const link = el.querySelector('a') || {};
-      const url = new URL(link.href || '', location.origin);
+      const link = el.querySelector('a')?.href || '';
+      const url = new URL(link, location.origin);
       const type = url.searchParams.get('type') || '';
-      const themId = url.searchParams.get('thematicId') || '';
+      const them = url.searchParams.get('thematicId') || url.searchParams.get('thematicid') || '';
       const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText.trim() || '';
       const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText.trim() || '';
-      longContainer.innerHTML += `
+      longCon.innerHTML += `
         <div class="moduled-table-row">
           <div>${name}</div>
           <div>${desc}</div>
-          <div>
-            <input type="radio" name="activity" 
-                   data-type="${type}" 
-                   data-thematicid="${themId}" />
-          </div>
+          <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${them}" /></div>
         </div>`;
     });
   }
 
-  // 四：渲染短期活动标签页并注入 data- 属性
+  // === 渲染短期活动列表 ===
   async function fetchShortTermActivities() {
     const panels = [0,1,2].map(i => document.getElementById('moduled-tab-'+i));
     const roots = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
     if (roots.length < 2) return;
     const tabs = roots[1].querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
     for (let i=0; i<tabs.length; i++) {
-      const radioName = `short-${i}`;
       tabs[i].click();
       await new Promise(r=>setTimeout(r,800));
       const panel = panels[i];
       panel.innerHTML = '<div class="moduled-table-header"><div>主题</div><div>报名时间</div><div>活动时间</div><div>已报名</div><div>选择</div></div>';
-      document.querySelectorAll('[data-testid="beast-core-table-body-tr"]').forEach(row=> {
+      document.querySelectorAll('[data-testid="beast-core-table-body-tr"]').forEach(row => {
         const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
-        if (cells.length<5) return;
-        // 取链接参数
-        const link = cells[0].querySelector('a') || {};
-        const url = new URL(link.href||'', location.origin);
-        const type = url.searchParams.get('type')||'';
-        const themId = url.searchParams.get('thematicId')||'';
+        if (cells.length < 5) return;
+        const link = row.querySelector('a')?.href || '';
+        const url = new URL(link, location.origin);
+        const type = url.searchParams.get('type') || '';
+        const them = url.searchParams.get('thematicId') || url.searchParams.get('thematicid') || '';
         panel.innerHTML += `
           <div class="moduled-table-row">
             <div>${cells[0].innerText.trim()}</div>
             <div>${cells[1].innerText.trim()}</div>
             <div>${cells[2].innerText.trim()}</div>
             <div>${cells[3].innerText.trim()}</div>
-            <div>
-              <input type="radio" name="activity" 
-                     data-type="${type}" 
-                     data-thematicid="${themId}" />
-            </div>
+            <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${them}" /></div>
           </div>`;
       });
     }
   }
 
-  // 五：创建抽屉及绑定事件
+  // === 构建抽屉界面 ===
   function createDrawer() {
-    // 移除旧实例
     document.getElementById('moduled-drawer')?.remove();
-
-    // 构建 DOM
-    const drawer = document.createElement('div');
-    drawer.id = 'moduled-drawer';
-    drawer.innerHTML = `
-      <h2>活动报名 V4.5 <span id="moduled-close">❌</span></h2>
+    const d = document.createElement('div');
+    d.id = 'moduled-drawer';
+    d.innerHTML = `
+      <h2>活动报名 V4.6 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group">
           <label>活动价格设置方式</label>
@@ -175,23 +194,16 @@
         <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
       </div>
     `;
-    document.body.appendChild(drawer);
-
-    // 关闭
-    drawer.querySelector('#moduled-close').onclick = () => drawer.remove();
-
-    // 改变 price-label
-    drawer.querySelector('#moduled-price-mode').onchange = function() {
-      drawer.querySelector('#moduled-price-label').textContent =
-        this.value==='profit' ? '活动利润率不低于' : '活动价格不低于';
+    document.body.appendChild(d);
+    d.querySelector('#moduled-close').onclick = () => d.remove();
+    d.querySelector('#moduled-price-mode').onchange = function(){
+      d.querySelector('#moduled-price-label').textContent = this.value==='profit'? '活动利润率不低于':'活动价格不低于';
     };
-
-    // 短期标签页切换
-    drawer.querySelectorAll('.moduled-tab').forEach(tab=>{
+    d.querySelectorAll('.moduled-tab').forEach(tab=>{
       tab.onclick = () => {
-        drawer.querySelectorAll('.moduled-tab, .moduled-tab-panel').forEach(el=>el.classList.remove('active'));
+        d.querySelectorAll('.moduled-tab, .moduled-tab-panel').forEach(el=>el.classList.remove('active'));
         tab.classList.add('active');
-        drawer.querySelector('#moduled-tab-'+tab.dataset.tab).classList.add('active');
+        d.querySelector('#moduled-tab-'+tab.dataset.tab).classList.add('active');
       };
     });
 
@@ -199,16 +211,15 @@
     fetchActivityData();
     fetchShortTermActivities();
 
-    // 立即报名：只取首个选中，校验价格，并测试抓首批数据
-    drawer.querySelector('#moduled-submit').onclick = () => {
-      const priceVal = drawer.querySelector('#moduled-price-input').value.trim();
+    // 点击立即报名：校验价格 + 调用首批抓取
+    d.querySelector('#moduled-submit').onclick = () => {
+      const priceVal = d.querySelector('#moduled-price-input').value.trim();
       if (!priceVal) return alert('请填写活动价格');
-      const sel = drawer.querySelector('input[name="activity"]:checked');
+      const sel = d.querySelector('input[name="activity"]:checked');
       if (!sel) return alert('请先选择一个活动');
-      const type = sel.dataset.type;
-      const them = sel.dataset.thematicid;
-      console.log('🎯 选中活动参数：', { type, thematicId: them });
-      fetchFirstBatch(type, them);
+      // 已通过 XHR 拦截拿到最新 lastParams
+      if (!lastParams) return alert('尚未获取活动参数，请先在原生页面点击去报名触发');
+      fetchFirstBatch(lastParams.type, lastParams.thematicId);
     };
   }
 
