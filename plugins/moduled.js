@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         活动报名插件 V4.0（分页抓取 + 自动 anti-content）
+// @name         活动报名插件 V3.8（修复按钮事件）
 // @namespace    https://yourdomain.com
-// @version      4.0.0
-// @description  支持短期活动分组抓取，增强抓取商品支持分页与 Headers，自动获取 anti-content
+// @version      3.8.1
+// @description  修复抓取商品按钮点击无效的问题
 // @match        https://*.kuajingmaihuo.com/*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
@@ -11,7 +11,6 @@
 (function () {
   'use strict';
 
-  const FULL_COOKIE = `api_uid=CnGDF2hFMdu/OhFcQmzwAg==; dilx=zH3hWrGXMBu9elzJ3-ZFz; _nano_fp=XpmYlpTynpCjnqdyX9_KvaW_n_5~6c7iwo23whca; timezone=Asia%2FShanghai; webp=1; seller_temp=N_eyJ0IjoiV21pN25odFhRanp6T1JCQWFrTDFuelAyZ3IybGQ5ZzExamtWQjAxRVNEckU0QjY1R1NSN2dHT1FrSm94VC9NYy91RHNPbHd0MXNBVFIwWUdUZ2ZRclE9PSIsInYiOjEsInMiOjEwMDAxLCJ1IjoyNDA3NjI2ODY3MzE5OX0=; mallid=634418223153529; _bee=uAKR5aiZPXOOC3GKMaoN5OYhr6zOXapM; njrpl=uAKR5aiZPXOOC3GKMaoN5OYhr6zOXapM; hfsc=L3yPeIg17T361JDMeg==`;
   const style = `
     #moduled-drawer { position: fixed; top: 0; right: 0; width: 780px; height: 100%; background: #fff; border-left: 1px solid #ccc; z-index: 999999; overflow-y: auto; font-family: Arial; box-shadow: -2px 0 8px rgba(0,0,0,0.2); }
     #moduled-drawer h2 { font-size: 18px; padding: 16px; margin: 0; border-bottom: 1px solid #eee; }
@@ -37,7 +36,7 @@
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
     drawer.innerHTML = `
-      <h2>活动报名 4.0 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 3.8 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
         <div class="moduled-input-group">
@@ -49,73 +48,38 @@
         </div>
         <div class="moduled-input-group"><label id="moduled-price-label">活动价格不低于</label><input type="number" id="moduled-price-input" /></div>
         <div class="moduled-input-group"><label>活动库存数量</label><input type="number" id="moduled-stock-input" /></div>
-        <div class="moduled-input-group">
-          <label>anti-content（可自动获取）</label>
-          <input type="text" id="manual-anti-placeholder" placeholder="自动填充失败时手动填入" />
-        </div>
         <div class="moduled-input-group"><label>输入活动ID测试商品抓取</label><input type="text" id="moduled-activity-id-input" placeholder="输入活动ID" /></div>
         <div><button id="moduled-fetch-products">抓取商品数据</button></div>
-      </div>
-      <div class="moduled-section">
-        <strong>长期活动</strong>
-        <div id="moduled-long"></div>
-      </div>
-      <div class="moduled-section">
-        <strong>短期活动</strong>
-        <div class="moduled-tabs">
-          <div class="moduled-tab active" data-tab="0">大促进阶</div>
-          <div class="moduled-tab" data-tab="1">秒杀进阶</div>
-          <div class="moduled-tab" data-tab="2">清仓进阶</div>
-        </div>
-        <div id="moduled-short-panels">
-          <div class="moduled-tab-panel active" id="moduled-tab-0"></div>
-          <div class="moduled-tab-panel" id="moduled-tab-1"></div>
-          <div class="moduled-tab-panel" id="moduled-tab-2"></div>
-        </div>
       </div>
       <div class="moduled-section" style="text-align:center;">
         <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
       </div>
     `;
     document.body.appendChild(drawer);
+
     document.getElementById('moduled-close').onclick = () => drawer.remove();
     document.getElementById('moduled-price-mode').onchange = function () {
       document.getElementById('moduled-price-label').textContent =
         this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
-    document.getElementById('manual-anti-placeholder').value = '';
 
-    document.querySelectorAll('.moduled-tab').forEach(tab => {
-      tab.onclick = () => {
-        document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.moduled-tab-panel').forEach(p => p.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('moduled-tab-' + tab.dataset.tab).classList.add('active');
-      };
-    });
-
-    document.getElementById('moduled-fetch-products').onclick = () => {
-      const actId = document.getElementById('moduled-activity-id-input').value.trim();
-      if (actId) fetchProductsRecursive(actId);
-    };
-
-    fetchActivityData();
+    // 🛠️ 修复绑定点击事件位置
+    setTimeout(() => {
+      const btn = document.getElementById('moduled-fetch-products');
+      if (btn) {
+        btn.onclick = () => {
+          const actId = document.getElementById('moduled-activity-id-input').value.trim();
+          if (actId) fetchProducts(actId);
+          else alert("请输入活动ID");
+        };
+      }
+    }, 300); // 等 UI 插入 DOM 后再绑定事件
   }
 
-  function fetchActivityData() { /* ... 保留不变 ... */ }
-  async function fetchShortTermActivities() { /* ... 保留不变 ... */ }
-
-  function getAntiContent() {
-    const inputVal = document.getElementById('manual-anti-placeholder')?.value?.trim();
-    if (inputVal) return inputVal;
-    const meta = [...document.querySelectorAll('meta')].find(m => m.content?.includes('anti-content'));
-    return meta?.content || 'manual-anti-placeholder';
-  }
-
-  function fetchProductsRecursive(activityId, scrollContext = "") {
-    const cookie = FULL_COOKIE;
+  function fetchProducts(activityId, scrollContext = "") {
+    const cookie = document.cookie;
     const mallid = '634418223153529';
-    const anti = getAntiContent();
+    const anti = '0aqAfoiZYiGNy99Vjnmalvu7E_DKXGD36t7WjztF-KvkIvZS7gtjNceMGjmyhEy5Enyd3amas7m62JyBoZlDctJAWctxBiL6KrW7gMp_5uAs4cv5vmnCywX15gpCSjyaePYMkkfTk5Z3jovwUfB9Lkb541qt-_tmsBwGsi7wme1fF3zXdcPbMTJI4gDlO4B8gzz4j8I1F7cO5bJKMic3JAzHlAEnhEH30U8XI8tLm34524m9AKXnqYCNA8esGoEkKlyMv3oPEVVLa4dAjxBkpbBRjjCTV8cCeFoI0domkovdXNxo71HJRGtHGBIEoAdzYhuiO3WPQZ9CzjB2RUtkX_5nBBBl_hCqbg5mUfBqlmxGWOemZxxDZBYa1UmVSvW0vIMK2WPoG3y1XhYslgNKcpLcq_YYHTWwUpkqIBS2K_8RalJY51OoxXXMWLbL8RAQZo83Qe-gN7nuMV-6XwnAKVm3QzSvMOkA4Ju7rjqh7aSqo0BZE6hPrzTgTq';
     const body = {
       activityType: 13,
       activityThematicId: Number(activityId),
@@ -138,23 +102,7 @@
       },
       data: JSON.stringify(body),
       onload(res) {
-        try {
-          const json = JSON.parse(res.responseText);
-          const list = json?.data?.matchList || [];
-          const nextCtx = json?.data?.searchScrollContext || "";
-          const hasMore = json?.data?.hasMore || false;
-
-          console.log(`📦 获取商品 ${list.length} 条`, list);
-
-          if (hasMore && nextCtx) {
-            setTimeout(() => fetchProductsRecursive(activityId, nextCtx), 1500);
-          }
-        } catch (err) {
-          console.error("❌ 解析失败：", err);
-        }
-      },
-      onerror(err) {
-        console.error("❌ 请求错误：", err);
+        console.log('🎯 返回数据：', res.responseText);
       }
     });
   }
