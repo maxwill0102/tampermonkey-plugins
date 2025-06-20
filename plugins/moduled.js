@@ -81,7 +81,7 @@
 function fetchProducts(activityId, scrollContext = "", allProducts = []) {
   const cookie = document.cookie;
   const mallid = '634418223153529';
-  const anti = '你的anti-content值';
+  const anti = '0aqAfaiZYioyy9mT2yVg2R2IDKf1wGxMWRmJv2sjgjfZjt7cPjdurPh3xS8fAAYb3aDhalIjPz2sDszDnJta5u9E-p5Lx_I4HJcLDyM6mQKJBqF-uDFL57BG9zFvq9FvtkBo0e3UzQBcDCThOd3IxkCVd1rSjd4-CMedr2RKiO_21DYd-ATXqJbh8wCdRPw_VYWuMJZhJ85iR7cM38r3rRA6zxEjGEPup8Ggnhq7DcMRe_bx6mKKu_D7ljBNDAWJjUH8I7w76W4bFfPqp9j4AKA4FdJ8qVT_vzP26U-8de6ynTHwnshGz_4a3l9DVjcKI9OfeY2D4ay1K3olVrI5CR-bAgHfXd4y0rawDBfVFFv3P4coa732aIG-e49pcU6vKM6NLKDFW-3GtActKuYcdYkI2RQGiVeHBGLyAlRz2A8ONbbRSwTwhzUZeE1dYTLFS8ENJ0zR9sXxOAM0os-I8-ynri3XvprAqXrBbvf5uiMPJLm7LL0u04bWWI5NSvYuHJY8rC6OR-P14ljU2gS';
 
   const body = {
     activityType: 13,
