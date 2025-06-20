@@ -11,7 +11,7 @@
 (function () {
   'use strict';
 
-  const style = 
+  const style = `
     #moduled-drawer { position: fixed; top: 0; right: 0; width: 780px; height: 100%; background: #fff; border-left: 1px solid #ccc; z-index: 999999; overflow-y: auto; font-family: Arial; box-shadow: -2px 0 8px rgba(0,0,0,0.2); }
     #moduled-drawer h2 { font-size: 18px; padding: 16px; margin: 0; border-bottom: 1px solid #eee; }
     #moduled-close { position: absolute; top: 10px; right: 10px; cursor: pointer; }
@@ -27,7 +27,7 @@
     .moduled-table-header, .moduled-table-row { display: grid; grid-template-columns: 1.5fr 2fr 2fr 1fr 1fr; gap: 10px; padding: 6px 0; align-items: center; }
     .moduled-table-header { font-weight: bold; border-bottom: 1px solid #ccc; margin-bottom: 4px; }
     .moduled-table-row { border-bottom: 1px dashed #ddd; }
-  ;
+  `;
   GM_addStyle(style);
 
   function createDrawer() {
@@ -35,7 +35,7 @@
 
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
-    drawer.innerHTML = 
+    drawer.innerHTML = `
       <h2>活动报名 3.8 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
@@ -54,7 +54,7 @@
       <div class="moduled-section" style="text-align:center;">
         <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
       </div>
-    ;
+    `;
     document.body.appendChild(drawer);
 
     document.getElementById('moduled-close').onclick = () => drawer.remove();
@@ -95,7 +95,7 @@
         'content-type': 'application/json',
         'cookie': cookie,
         'mallid': mallid,
-        'referer': https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId},
+        'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
         'anti-content': anti,
         'origin': 'https://agentseller.temu.com',
         'user-agent': navigator.userAgent
