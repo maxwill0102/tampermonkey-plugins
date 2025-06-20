@@ -30,6 +30,9 @@
   `;
   GM_addStyle(style);
 
+  let selectedActivities = []; // 勾选的活动列表
+  let submitting = false;
+
   function createDrawer() {
     if (document.getElementById('moduled-drawer')) return;
 
@@ -97,6 +100,61 @@
       }
     }, 300);
     fetchActivityData();
+        document.getElementById('moduled-submit').onclick = () => {
+      // 获取设置值
+      const mode = document.getElementById('moduled-price-mode').value;
+      const priceVal = document.getElementById('moduled-price-input').value.trim();
+      const stockVal = document.getElementById('moduled-stock-input').value.trim();
+
+      // 获取所有勾选的活动（长期+短期）
+      const checked = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'));
+      selectedActivities = checked.map(el => ({ id: el.id, type: el.id.startsWith('long') ? 'long' : 'short' }));
+
+      if (selectedActivities.length === 0) return alert('请先选择要报名的活动');
+
+      // 跳转模拟详情页（后续可改成实际新页面）
+      renderSubmitPage({ mode, priceVal, stockVal, total: selectedActivities.length });
+    };
+  }
+  function renderSubmitPage(config) {
+    const win = window.open('', '_blank');
+    if (!win) return alert('无法打开新窗口，请允许弹窗');
+
+    win.document.write(`
+      <html><head><title>活动报名详情页</title></head><body style="font-family:Arial;padding:20px">
+        <h2>活动信息</h2>
+        <p>价格方式：${config.mode === 'profit' ? '利润率不低于' : '价格不低于固定值'} ${config.priceVal || '默认'}</p>
+        <p>活动库存：${config.stockVal || '默认'}</p>
+
+        <h2>报名活动数据</h2>
+        <p>当前活动：1 / ${config.total}</p>
+        <p>报名成功：0 / 0</p>
+        <p>未报名数量：0</p>
+
+        <h2>商品列表</h2>
+        <table border="1" cellspacing="0" cellpadding="5">
+          <thead>
+            <tr><th>商品标题</th><th>SKC</th><th>日常价格</th><th>活动申报价格</th><th>是否满足报名条件</th><th>活动库存</th><th>是否报名成功</th></tr>
+          </thead>
+          <tbody id="product-rows">
+            <tr><td colspan="7" align="center">等待抓取数据...</td></tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:20px;text-align:center">
+          <button id="pause-btn">暂停</button>
+        </div>
+
+        <script>
+          let paused = false;
+          document.getElementById('pause-btn').onclick = () => paused = true;
+          // 后续数据填充逻辑将在主窗口传入
+        </script>
+      </body></html>
+    `);
+
+    // 将窗口挂载到全局便于后续更新数据
+    window.__moduled_submit_window__ = win;
   }
 
   function fetchActivityData() {
