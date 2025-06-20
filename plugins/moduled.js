@@ -11,6 +11,7 @@
 (function () {
   'use strict';
 
+  const FULL_COOKIE = `api_uid=CnGDF2hFMdu/OhFcQmzwAg==; dilx=zH3hWrGXMBu9elzJ3-ZFz; _nano_fp=XpmYlpTynpCjnqdyX9_KvaW_n_5~6c7iwo23whca; timezone=Asia%2FShanghai; webp=1; seller_temp=N_eyJ0IjoiV21pN25odFhRanp6T1JCQWFrTDFuelAyZ3IybGQ5ZzExamtWQjAxRVNEckU0QjY1R1NSN2dHT1FrSm94VC9NYy91RHNPbHd0MXNBVFIwWUdUZ2ZRclE9PSIsInYiOjEsInMiOjEwMDAxLCJ1IjoyNDA3NjI2ODY3MzE5OX0=; mallid=634418223153529; _bee=uAKR5aiZPXOOC3GKMaoN5OYhr6zOXapM; njrpl=uAKR5aiZPXOOC3GKMaoN5OYhr6zOXapM; hfsc=L3yPeIg17T361JDMeg==`;
   const style = `
     #moduled-drawer { position: fixed; top: 0; right: 0; width: 780px; height: 100%; background: #fff; border-left: 1px solid #ccc; z-index: 999999; overflow-y: auto; font-family: Arial; box-shadow: -2px 0 8px rgba(0,0,0,0.2); }
     #moduled-drawer h2 { font-size: 18px; padding: 16px; margin: 0; border-bottom: 1px solid #eee; }
@@ -112,7 +113,7 @@
   }
 
   function fetchProductsRecursive(activityId, scrollContext = "") {
-    const cookie = document.cookie;
+    const cookie = FULL_COOKIE;
     const mallid = '634418223153529';
     const anti = getAntiContent();
     const body = {
