@@ -78,59 +78,58 @@
       }
     }, 300);
   }
+function fetchProducts(activityId, scrollContext = "", allProducts = []) {
+  const cookie = document.cookie;
+  const mallid = '634418223153529';
+  const anti = '你的anti-content值';
 
-  function fetchProducts(activityId, scrollContext = "", allProducts = []) {
-    const cookie = document.cookie;
-    const mallid = '634418223153529';
-    const anti = '0aqAfoiZYiGNy99Vjnmalvu7E_DKXGD36t7WjztF-KvkIvZS7gtjNceMGjmyhEy5Enyd3amas7m62JyBoZlDctJAWctxBiL6KrW7gMp_5uAs4cv5vmnCywX15gpCSjyaePYMkkfTk5Z3jovwUfB9Lkb541qt-_tmsBwGsi7wme1fF3zXdcPbMTJI4gDlO4B8gzz4j8I1F7cO5bJKMic3JAzHlAEnhEH30U8XI8tLm34524m9AKXnqYCNA8esGoEkKlyMv3oPEVVLa4dAjxBkpbBRjjCTV8cCeFoI0domkovdXNxo71HJRGtHGBIEoAdzYhuiO3WPQZ9CzjB2RUtkX_5nBBBl_hCqbg5mUfBqlmxGWOemZxxDZBYa1UmVSvW0vIMK2WPoG3y1XhYslgNKcpLcq_YYHTWwUpkqIBS2K_8RalJY51OoxXXMWLbL8RAQZo83Qe-gN7nuMV-6XwnAKVm3QzSvMOkA4Ju7rjqh7aSqo0BZE6hPrzTgTq';
+  const body = {
+    activityType: 13,
+    activityThematicId: Number(activityId),
+    rowCount: 50,
+    addSite: true,
+    searchScrollContext: scrollContext
+  };
 
-    const body = {
-      activityType: 13,
-      activityThematicId: Number(activityId),
-      rowCount: 50,
-      addSite: true,
-      searchScrollContext: scrollContext
-    };
+  GM_xmlhttpRequest({
+    method: 'POST',
+    url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
+    headers: {
+      'content-type': 'application/json',
+      'cookie': cookie,
+      'mallid': mallid,
+      'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
+      'anti-content': anti,
+      'origin': 'https://agentseller.temu.com',
+      'user-agent': navigator.userAgent
+    },
+    data: JSON.stringify(body),
+    onload(res) {
+      try {
+        const json = JSON.parse(res.responseText);
+        const items = json?.data?.resultList || [];
+        const nextContext = json?.data?.searchScrollContext || null;
 
-    GM_xmlhttpRequest({
-      method: 'POST',
-      url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
-      headers: {
-        'content-type': 'application/json',
-        'cookie': cookie,
-        'mallid': mallid,
-        'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
-        'anti-content': anti,
-        'origin': 'https://agentseller.temu.com',
-        'user-agent': navigator.userAgent
-      },
-      data: JSON.stringify(body),
-      onload(res) {
-        try {
-          const json = JSON.parse(res.responseText);
-          const items = json?.data?.resultList || [];
-          const nextContext = json?.data?.searchScrollContext || null;
+        allProducts.push(...items);
+        console.log("当前页商品数：", items.length);
 
-          allProducts.push(...items);
-
-          console.log(`📦 当前累计抓取 ${allProducts.length} 个商品`);
-
-          if (nextContext) {
-            fetchProducts(activityId, nextContext, allProducts); // 递归
-          } else {
-            console.log("✅ 所有商品抓取完成，共计：", allProducts.length);
-            console.log("🧾 商品数据如下：", allProducts);
-            alert(`抓取完成，共 ${allProducts.length} 条商品数据，详情请查看控制台`);
-          }
-        } catch (e) {
-          console.error("❌ JSON 解析失败：", e);
+        if (nextContext) {
+          console.log("📦 继续抓取下一页...");
+          fetchProducts(activityId, nextContext, allProducts);
+        } else {
+          console.log("✅ 全部抓取完毕，共", allProducts.length, "条");
         }
-      },
-      onerror(err) {
-        console.error("❌ 请求失败：", err);
+      } catch (err) {
+        console.error("❌ JSON解析失败", err, res.responseText);
       }
-    });
-  }
+    },
+    onerror(err) {
+      console.error("❌ 请求失败：", err);
+    }
+  });
+}
+
+  
 
   // 注册插件入口
   window.__moduled_plugin__ = () => {
