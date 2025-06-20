@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const style = `
+  const style = 
     #moduled-drawer { position: fixed; top: 0; right: 0; width: 780px; height: 100%; background: #fff; border-left: 1px solid #ccc; z-index: 999999; overflow-y: auto; font-family: Arial; box-shadow: -2px 0 8px rgba(0,0,0,0.2); }
     #moduled-drawer h2 { font-size: 18px; padding: 16px; margin: 0; border-bottom: 1px solid #eee; }
     #moduled-close { position: absolute; top: 10px; right: 10px; cursor: pointer; }
@@ -17,62 +17,34 @@
     .moduled-table-header, .moduled-table-row { display: grid; grid-template-columns: 1.5fr 2fr 2fr 1fr 1fr; gap: 10px; padding: 6px 0; align-items: center; }
     .moduled-table-header { font-weight: bold; border-bottom: 1px solid #ccc; margin-bottom: 4px; }
     .moduled-table-row { border-bottom: 1px dashed #ddd; }
-    #moduled-loading { display: none; text-align: center; padding: 10px; }
-    #moduled-product-count { margin-top: 10px; font-size: 14px; color: #666; }
-  `;
+  ;
   GM_addStyle(style);
-
-  // 存储所有商品数据
-  let allProducts = [];
-  let currentActivityId = '';
-  let isFetching = false;
 
   function createDrawer() {
     if (document.getElementById('moduled-drawer')) return;
 
     const drawer = document.createElement('div');
     drawer.id = 'moduled-drawer';
-    drawer.innerHTML = `
+    drawer.innerHTML = 
       <h2>活动报名 3.8 <span id="moduled-close">❌</span></h2>
-      <div class="moduled-tabs">
-        <div class="moduled-tab active" data-tab="settings">设置</div>
-        <div class="moduled-tab" data-tab="products">商品列表</div>
-      </div>
-      <div class="moduled-tab-panel active" id="moduled-settings">
-        <div class="moduled-section">
-          <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
-          <div class="moduled-input-group">
-            <label>活动价格设置方式</label>
-            <select id="moduled-price-mode">
-              <option value="fixed">活动价格不低于固定值</option>
-              <option value="profit">活动利润率不低于固定比例</option>
-            </select>
-          </div>
-          <div class="moduled-input-group"><label id="moduled-price-label">活动价格不低于</label><input type="number" id="moduled-price-input" /></div>
-          <div class="moduled-input-group"><label>活动库存数量</label><input type="number" id="moduled-stock-input" /></div>
-          <div class="moduled-input-group"><label>输入活动ID测试商品抓取</label><input type="text" id="moduled-activity-id-input" placeholder="输入活动ID" /></div>
-          <div><button id="moduled-fetch-products">抓取商品数据</button></div>
-          <div id="moduled-loading">加载中...<div id="moduled-product-count">已获取商品: 0</div></div>
+      <div class="moduled-section" id="moduled-settings">
+        <div class="moduled-input-group"><label>当前绑定店铺</label><div id="moduled-shop-name">（开发中）</div></div>
+        <div class="moduled-input-group">
+          <label>活动价格设置方式</label>
+          <select id="moduled-price-mode">
+            <option value="fixed">活动价格不低于固定值</option>
+            <option value="profit">活动利润率不低于固定比例</option>
+          </select>
         </div>
-        <div style="text-align:center;">
-          <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
-        </div>
+        <div class="moduled-input-group"><label id="moduled-price-label">活动价格不低于</label><input type="number" id="moduled-price-input" /></div>
+        <div class="moduled-input-group"><label>活动库存数量</label><input type="number" id="moduled-stock-input" /></div>
+        <div class="moduled-input-group"><label>输入活动ID测试商品抓取</label><input type="text" id="moduled-activity-id-input" placeholder="输入活动ID" /></div>
+        <div><button id="moduled-fetch-products">抓取商品数据</button></div>
       </div>
-      <div class="moduled-tab-panel" id="moduled-products-panel">
-        <div class="moduled-section">
-          <div id="moduled-products-table">
-            <div class="moduled-table-header">
-              <div>商品ID</div>
-              <div>商品名称</div>
-              <div>价格</div>
-              <div>库存</div>
-              <div>状态</div>
-            </div>
-            <div id="moduled-products-list"></div>
-          </div>
-        </div>
+      <div class="moduled-section" style="text-align:center;">
+        <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
       </div>
-    `;
+    ;
     document.body.appendChild(drawer);
 
     document.getElementById('moduled-close').onclick = () => drawer.remove();
@@ -81,177 +53,83 @@
         this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
     };
 
-    // 标签页切换功能
-    document.querySelectorAll('.moduled-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.moduled-tab-panel').forEach(p => p.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById(`moduled-${tab.dataset.tab}${tab.dataset.tab === 'settings' ? '' : '-panel'}`).classList.add('active');
-      });
-    });
-
-    // 绑定抓取按钮事件
-    const fetchBtn = document.getElementById('moduled-fetch-products');
-    if (fetchBtn) {
-      fetchBtn.onclick = () => {
-        const actId = document.getElementById('moduled-activity-id-input').value.trim();
-        if (actId) {
-          currentActivityId = actId;
-          allProducts = []; // 重置商品列表
-          fetchProducts(actId);
-        } else {
-          alert("请输入活动ID");
-        }
-      };
-    }
-  }
-// ... 前面样式和UI代码保持不变 ...
-
-  // 递归获取所有商品
-// ... 前面样式和UI代码保持不变 ...
-
-  // 递归获取所有商品
-  function fetchProducts(activityId, scrollContext = "") {
-    if (isFetching) return;
-    isFetching = true;
-    
-    const loadingEl = document.getElementById('moduled-loading');
-    const productCountEl = document.getElementById('moduled-product-count');
-    loadingEl.style.display = 'block';
-    
-    const cookie = document.cookie;
-    const mallid = '634418223153529';
-    const anti = '0aqAfoiZYiGNy99Vjnmalvu7E_DKXGD36t7WjztF-KvkIvZS7gtjNceMGjmyhEy5Enyd3amas7m62JyBoZlDctJAWctxBiL6KrW7gMp_5uAs4cv5vmnCywX15gpCSjyaePYMkkfTk5Z3jovwUfB9Lkb541qt-_tmsBwGsi7wme1fF3zXdcPbMTJI4gDlO4B8gzz4j8I1F7cO5bJKMic3JAzHlAEnhEH30U8XI8tLm34524m9AKXnqYCNA8esGoEkKlyMv3oPEVVLa4dAjxBkpbBRjjCTV8cCeFoI0domkovdXNxo71HJRGtHGBIEoAdzYhuiO3WPQZ9CzjB2RUtkX_5nBBBl_hCqbg5mUfBqlmxGWOemZxxDZBYa1UmVSvW0vIMK2WPoG3y1XhYslgNKcpLcq_YYHTWwUpkqIBS2K_8RalJY51OoxXXMWLbL8RAQZo83Qe-gN7nuMV-6XwnAKVm3QzSvMOkA4Ju7rjqh7aSqo0BZE6hPrzTgTq';
-    const body = {
-      activityType: 13,
-      activityThematicId: Number(activityId),
-      rowCount: 50,
-      addSite: true,
-      searchScrollContext: scrollContext || ""
-    };
-
-    // 使用Promise封装GM_xmlhttpRequest
-    const requestPromise = new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({
-        method: 'POST',
-        url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
-        headers: {
-          'content-type': 'application/json',
-          'cookie': cookie,
-          'mallid': mallid,
-          'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
-          'anti-content': anti,
-          'origin': 'https://agentseller.temu.com',
-          'user-agent': navigator.userAgent
-        },
-        data: JSON.stringify(body),
-        onload: function(res) {
-          try {
-            const data = JSON.parse(res.responseText);
-            console.log('API完整响应:', data);
-            
-            if (!data || !data.success) {
-              reject(new Error(`API请求失败: ${data?.errorMsg || '未知错误'}`));
-              return;
-            }
-            
-            const products = data.result?.matchList;
-            
-            if (!products || !Array.isArray(products)) {
-              reject(new Error('商品数据格式错误'));
-              return;
-            }
-            
-            resolve({data, products});
-          } catch (e) {
-            reject(e);
-          }
-        },
-        onerror: function(err) {
-          reject(err);
-        },
-        ontimeout: function() {
-          reject(new Error('请求超时'));
-        }
-      });
-    });
-
-    requestPromise
-      .then(({data, products}) => {
-        // 添加到总列表
-        allProducts = [...allProducts, ...products];
-        productCountEl.textContent = `已获取商品: ${allProducts.length}`;
-        
-        // 检查是否有下一页
-        const nextScrollContext = data.result?.searchScrollContext;
-        const hasMore = data.result?.hasMore;
-        
-        if (hasMore && nextScrollContext) {
-          // 使用setTimeout避免堆栈溢出
-          setTimeout(() => fetchProducts(activityId, nextScrollContext), 300);
-        } else {
-          finishFetching();
-        }
-      })
-      .catch((error) => {
-        console.error('请求错误:', error, '请求参数:', body);
-        alert(`商品数据获取失败: ${error.message}`);
-        finishFetching();
-      });
-  }
-
-  // ... renderProducts 函数保持不变 ...
-
-// ... 剩余代码保持不变 ...
-
-  // 渲染商品列表到界面
-  function renderProducts() {
-    const container = document.getElementById('moduled-products-list');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (allProducts.length === 0) {
-      container.innerHTML = '<div style="text-align:center;padding:20px;">未获取到商品数据</div>';
-      return;
-    }
-    
-    // 添加表头
-    const header = document.createElement('div');
-    header.className = 'moduled-table-header';
-    header.innerHTML = `
-      <div>商品ID</div>
-      <div>商品名称</div>
-      <div>价格</div>
-      <div>库存</div>
-      <div>状态</div>
-    `;
-    container.appendChild(header);
-    
-    // 添加商品行
-    allProducts.forEach(product => {
-      // 提取价格信息（从嵌套结构中）
-      let price = 'N/A';
-      if (product.activitySiteInfoList?.[0]?.skcList?.[0]?.skuList?.[0]?.dailyPrice) {
-        // 假设价格以分为单位，转换为元
-        price = (product.activitySiteInfoList[0].skcList[0].skuList[0].dailyPrice / 100).toFixed(2);
+    // 🛠️ 修复绑定点击事件位置
+    setTimeout(() => {
+      const btn = document.getElementById('moduled-fetch-products');
+      if (btn) {
+        btn.onclick = () => {
+          const actId = document.getElementById('moduled-activity-id-input').value.trim();
+          if (actId) fetchProducts(actId);
+          else alert("请输入活动ID");
+        };
       }
-      
-      const row = document.createElement('div');
-      row.className = 'moduled-table-row';
-      row.innerHTML = `
-        <div>${product.productId || 'N/A'}</div>
-        <div>${product.productName || '无标题'}</div>
-        <div>$${price}</div>
-        <div>${product.salesStock || 0}</div>
-        <div>${product.canEnrollSessionCount > 0 ? '可报名' : '不可报名'}</div>
-      `;
-      container.appendChild(row);
-    });
+    }, 300); // 等 UI 插入 DOM 后再绑定事件
   }
+function fetchProducts(activityId, scrollContext = "") {
+  const cookie = document.cookie;
+  const mallid = '634418223153529';
+  const anti = '0aqAfoiZYiGNy99Vjnmalvu7E_DKXGD36t7WjztF-KvkIvZS7gtjNceMGjmyhEy5Enyd3amas7m62JyBoZlDctJAWctxBiL6KrW7gMp_5uAs4cv5vmnCywX15gpCSjyaePYMkkfTk5Z3jovwUfB9Lkb541qt-_tmsBwGsi7wme1fF3zXdcPbMTJI4gDlO4B8gzz4j8I1F7cO5bJKMic3JAzHlAEnhEH30U8XI8tLm34524m9AKXnqYCNA8esGoEkKlyMv3oPEVVLa4dAjxBkpbBRjjCTV8cCeFoI0domkovdXNxo71HJRGtHGBIEoAdzYhuiO3WPQZ9CzjB2RUtkX_5nBBBl_hCqbg5mUfBqlmxGWOemZxxDZBYa1UmVSvW0vIMK2WPoG3y1XhYslgNKcpLcq_YYHTWwUpkqIBS2K_8RalJY51OoxXXMWLbL8RAQZo83Qe-gN7nuMV-6XwnAKVm3QzSvMOkA4Ju7rjqh7aSqo0BZE6hPrzTgTq'; // 请动态替换或获取
+  const body = {
+    activityType: 13,
+    activityThematicId: Number(activityId),
+    rowCount: 50,
+    addSite: true,
+    searchScrollContext: scrollContext || ""
+  };
 
-// ... 剩余代码保持不变 ...
+  GM_xmlhttpRequest({
+    method: 'POST',
+    url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
+    headers: {
+      'content-type': 'application/json',
+      'cookie': cookie,
+      'mallid': mallid,
+      'referer': `https://agentseller.temu.com/activity/marketing-activity/detail-new?type=13&thematicId=${activityId}`,
+      'anti-content': anti,
+      'origin': 'https://agentseller.temu.com',
+      'user-agent': navigator.userAgent
+    },
+    data: JSON.stringify(body),
+    onload(res) {
+      try {
+        const data = JSON.parse(res.responseText);
+        if (!data.success || !data.result) {
+          console.error("❌ 接口返回异常", data);
+          alert("接口返回异常");
+          return;
+        }
+
+        const list = data.result.matchList || [];
+        const scrollCtx = data.result.searchScrollContext || "";
+        const hasMore = data.result.hasMore;
+
+        // 初始化全局缓存
+        if (!window.__moduled_all_products__) {
+          window.__moduled_all_products__ = [];
+        }
+        window.__moduled_all_products__.push(...list);
+        console.log(`✅ 已获取 ${window.__moduled_all_products__.length} 条商品`);
+
+        // 递归继续
+        if (hasMore && scrollCtx) {
+          console.log("📦 加载下一页...");
+          fetchProducts(activityId, scrollCtx);
+        } else {
+          console.log("✅ 所有商品已加载完毕，共计：", window.__moduled_all_products__.length);
+          // 你可以在这里触发后续处理逻辑（例如显示在页面上）
+        }
+      } catch (e) {
+        console.error("❌ 解析数据失败", e);
+        alert("数据解析失败");
+      }
+    },
+    onerror(err) {
+      console.error("❌ 请求错误", err);
+      alert("商品数据请求失败");
+    }
+  });
+}
+
   
 
   window.__moduled_plugin__ = () => {
