@@ -106,13 +106,13 @@
       };
     }
   }
+// ... 前面样式和UI代码保持不变 ...
 
   // 递归获取所有商品
   function fetchProducts(activityId, scrollContext = "") {
     if (isFetching) return;
     isFetching = true;
     
-    // 显示加载状态
     const loadingEl = document.getElementById('moduled-loading');
     const productCountEl = document.getElementById('moduled-product-count');
     loadingEl.style.display = 'block';
@@ -144,30 +144,36 @@
       onload(res) {
         try {
           const data = JSON.parse(res.responseText);
-          if (data.result && data.result.productList) {
-            // 添加到总列表
-            allProducts = [...allProducts, ...data.result.productList];
-            
-            // 更新UI显示数量
-            productCountEl.textContent = `已获取商品: ${allProducts.length}`;
-            
-            // 检查是否有下一页
-            const nextScrollContext = data.result.searchScrollContext;
-            if (nextScrollContext) {
-              // 递归获取下一页（添加500ms延迟避免请求过快）
-              setTimeout(() => {
-                fetchProducts(activityId, nextScrollContext);
-              }, 500);
-            } else {
-              // 所有数据获取完成
-              finishFetching();
-            }
+          console.log('API完整响应:', data);  // 调试输出
+          
+          // 1. 验证API返回状态
+          if (!data || !data.success) {
+            throw new Error(`API请求失败: ${data?.errorMsg || '未知错误'}`);
+          }
+          
+          // 2. 检查数据结构 - 商品在matchList字段中
+          const products = data.result?.matchList;
+          
+          if (!products || !Array.isArray(products)) {
+            throw new Error('商品数据格式错误');
+          }
+          
+          // 3. 添加到总列表
+          allProducts = [...allProducts, ...products];
+          productCountEl.textContent = `已获取商品: ${allProducts.length}`;
+          
+          // 4. 递归终止条件 - 检查是否有下一页
+          const nextScrollContext = data.result?.searchScrollContext;
+          const hasMore = data.result?.hasMore;
+          
+          if (hasMore && nextScrollContext) {
+            setTimeout(() => fetchProducts(activityId, nextScrollContext), 500);
           } else {
-            throw new Error('商品数据解析失败');
+            finishFetching();
           }
         } catch (e) {
-          console.error('解析错误:', e);
-          alert('商品数据解析失败: ' + e.message);
+          console.error('解析错误:', e, '响应数据:', res.responseText);
+          alert(`商品数据解析失败: ${e.message}`);
           finishFetching();
         }
       },
@@ -207,19 +213,42 @@
       return;
     }
     
+    // 添加表头
+    const header = document.createElement('div');
+    header.className = 'moduled-table-header';
+    header.innerHTML = `
+      <div>商品ID</div>
+      <div>商品名称</div>
+      <div>价格</div>
+      <div>库存</div>
+      <div>状态</div>
+    `;
+    container.appendChild(header);
+    
+    // 添加商品行
     allProducts.forEach(product => {
+      // 提取价格信息（从嵌套结构中）
+      let price = 'N/A';
+      if (product.activitySiteInfoList?.[0]?.skcList?.[0]?.skuList?.[0]?.dailyPrice) {
+        // 假设价格以分为单位，转换为元
+        price = (product.activitySiteInfoList[0].skcList[0].skuList[0].dailyPrice / 100).toFixed(2);
+      }
+      
       const row = document.createElement('div');
       row.className = 'moduled-table-row';
       row.innerHTML = `
-        <div>${product.productId}</div>
-        <div>${product.title || '无标题'}</div>
-        <div>$${product.price?.toFixed(2) || '0.00'}</div>
-        <div>${product.stock || 0}</div>
-        <div>${product.status === 1 ? '可用' : '不可用'}</div>
+        <div>${product.productId || 'N/A'}</div>
+        <div>${product.productName || '无标题'}</div>
+        <div>$${price}</div>
+        <div>${product.salesStock || 0}</div>
+        <div>${product.canEnrollSessionCount > 0 ? '可报名' : '不可报名'}</div>
       `;
       container.appendChild(row);
     });
   }
+
+// ... 剩余代码保持不变 ...
+  
 
   window.__moduled_plugin__ = () => {
     createDrawer();
