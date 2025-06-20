@@ -1,3 +1,13 @@
+// ==UserScript==
+// @name         活动报名插件 V3.8（修复按钮事件）
+// @namespace    https://yourdomain.com
+// @version      3.8.1
+// @description  修复抓取商品按钮点击无效的问题
+// @match        https://*.kuajingmaihuo.com/*
+// @grant        GM_addStyle
+// @grant        GM_xmlhttpRequest
+// ==/UserScript==
+
 (function () {
   'use strict';
 
@@ -69,7 +79,7 @@
   function fetchProducts(activityId, scrollContext = "") {
     const cookie = document.cookie;
     const mallid = '634418223153529';
-    const anti = '0aqAfqsygjPsBgE2V4uz766Nw4uL5ppfp_kSeMuSeSueX-sd8QDd-xaQ4JUrnolL6q3NRHhA55-04O0tNalKuB6EB9S5_fTTbIPt4J4PGgLi6vttA800OyHyU7AaVV6aVXRN0xRYlW0Q88Wt8JHS3S9WPNHfOFjDlYDpmaJT3rgDqlNPgWxzETvmCfWTQZ4phQogDLp0VgjZ0VF_rYVhbmp3zVx4aZSqYVUjYjdh41c9cuvOK0lLk1BTj49cB1DdngcF0cpVCDVNQR8u7Pt7yuUsNZvD60uayvq0GhXXsL8ExG-kMS1-_soZvl2QvXKxal1Be_YCAQQd_b61H2J4GN07rsvZsog2SrRSPm3bIrV2OfpEOdVUD2PVQPVTSZs0fEOP_awaqdWgvbpPqdVgwLdDWC7wYDxaVVOg1IYumvu6CET3hAWx4ne0dG6JmmaJMbzuPsZCsaT9HXrInKMKLZTrisZFpBv74A9h1z-V3dqanoAK48TJaRG0KZxVBLK9vl2hSKagaOfHXCtG4Rs2sBtwUFWQ7fCIkeo8Y0wzXgGT5pt51Ygwkt5tPFyfa-OM9hs24gmEeoLkh_2kNhkdc_G7vU2pcIihMgKU22FIm1zJmHEAemLStPbnOZzdj320sup2psmwmduxa4cK08ZTyDC1_9od1zfx-pqysrty0O2jT0dpHhtIcvqcCFEYhcCyknk-tntpcVLy-m1l8kDbk_t--QDE7v-5SPySAZwzcnzzUCMI1tAcynN7-lvamjl8zFIqsjexwGFn5lkvcvFAyBtCLegmaoQ5hjh_IrHhGIYjMIKIai1im-XnJngIjADYu3NQ2hGpTDhEtn01RVu7V0i2mEM0NCUce9wV';
+    const anti = '0aqAfoiZYiGNy99Vjnmalvu7E_DKXGD36t7WjztF-KvkIvZS7gtjNceMGjmyhEy5Enyd3amas7m62JyBoZlDctJAWctxBiL6KrW7gMp_5uAs4cv5vmnCywX15gpCSjyaePYMkkfTk5Z3jovwUfB9Lkb541qt-_tmsBwGsi7wme1fF3zXdcPbMTJI4gDlO4B8gzz4j8I1F7cO5bJKMic3JAzHlAEnhEH30U8XI8tLm34524m9AKXnqYCNA8esGoEkKlyMv3oPEVVLa4dAjxBkpbBRjjCTV8cCeFoI0domkovdXNxo71HJRGtHGBIEoAdzYhuiO3WPQZ9CzjB2RUtkX_5nBBBl_hCqbg5mUfBqlmxGWOemZxxDZBYa1UmVSvW0vIMK2WPoG3y1XhYslgNKcpLcq_YYHTWwUpkqIBS2K_8RalJY51OoxXXMWLbL8RAQZo83Qe-gN7nuMV-6XwnAKVm3QzSvMOkA4Ju7rjqh7aSqo0BZE6hPrzTgTq';
     const body = {
       activityType: 13,
       activityThematicId: Number(activityId),
