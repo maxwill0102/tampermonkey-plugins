@@ -42,9 +42,115 @@
         <div><button id="moduled-fetch-products">抓取商品数据</button></div>
       </div>
       <div class="moduled-section" style="text-align:center;">
+           <strong>长期活动</strong>
+        <div id="moduled-long"></div>
+      </div>
+      <div class="moduled-section">
+        <strong>短期活动</strong>
+        <div class="moduled-tabs">
+          <div class="moduled-tab active" data-tab="0">大促进阶</div>
+          <div class="moduled-tab" data-tab="1">秒杀进阶</div>
+          <div class="moduled-tab" data-tab="2">清仓进阶</div>
+        </div>
+        <div id="moduled-short-panels">
+          <div class="moduled-tab-panel active" id="moduled-tab-0"></div>
+          <div class="moduled-tab-panel" id="moduled-tab-1"></div>
+          <div class="moduled-tab-panel" id="moduled-tab-2"></div>
+        </div>
+      </div>
+      <div class="moduled-section" style="text-align:center;">
         <button id="moduled-submit" style="padding:8px 16px;font-size:14px;">立即报名</button>
       </div>
     `;
+    document.body.appendChild(drawer);
+    document.getElementById('moduled-close').onclick = () => drawer.remove();
+    document.getElementById('moduled-price-mode').onchange = function () {
+      document.getElementById('moduled-price-label').textContent =
+        this.value === 'profit' ? '活动利润率不低于' : '活动价格不低于';
+    };
+
+    document.querySelectorAll('.moduled-tab').forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll('.moduled-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.moduled-tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('moduled-tab-' + tab.dataset.tab).classList.add('active');
+      };
+    });
+
+    fetchActivityData();
+  }
+
+  function fetchActivityData() {
+    const longList = document.querySelectorAll('.act-item_actItem__x2Uci');
+    const longContainer = document.getElementById('moduled-long');
+    longContainer.innerHTML = '<div class="moduled-table-header"><div>活动类型</div><div>活动说明</div><div>是否报名</div></div>';
+    longList.forEach((el, index) => {
+      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText?.trim() || '';
+      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText?.trim() || '';
+      const checkboxId = `long-chk-${index}`;
+      longContainer.innerHTML += `
+        <div class="moduled-table-row">
+          <div>${name}</div>
+          <div>${desc}</div>
+          <div><input type="checkbox" id="${checkboxId}" /></div>
+        </div>`;
+    });
+
+    fetchShortTermActivities();
+  }
+
+  async function fetchShortTermActivities() {
+    const shortPanelRoots = [
+      document.getElementById('moduled-tab-0'),
+      document.getElementById('moduled-tab-1'),
+      document.getElementById('moduled-tab-2'),
+    ];
+    const tabWrapperList = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
+    const tabContainer = tabWrapperList.length >= 2 ? tabWrapperList[1] : null;
+    if (!tabContainer) return console.warn('❌ 未找到短期活动 tab');
+
+    const tabs = tabContainer.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+    const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    for (let i = 0; i < tabs.length; i++) {
+      tabs[i].click();
+      await delay(800);
+
+      const container = shortPanelRoots[i] || shortPanelRoots[0];
+      container.innerHTML = `
+        <div class="moduled-table-header">
+          <div>活动主题</div>
+          <div>报名时间</div>
+          <div>活动时间</div>
+          <div>已报名</div>
+          <div>是否报名</div>
+        </div>
+      `;
+
+      const rows = document.querySelectorAll('[data-testid="beast-core-table-body-tr"]');
+      rows.forEach((row, index) => {
+        const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
+        if (cells.length >= 5) {
+          const title = cells[0].innerText.trim();
+          const applyTime = cells[1].innerText.trim();
+          const actTime = cells[2].innerText.trim();
+          const joined = cells[3].innerText.trim();
+          const checkboxId = `short-chk-${i}-${index}`;
+
+          container.innerHTML += `
+            <div class="moduled-table-row">
+              <div>${title}</div>
+              <div>${applyTime}</div>
+              <div>${actTime}</div>
+              <div>${joined}</div>
+              <div><input type="checkbox" id="${checkboxId}" /></div>
+            </div>
+          `;
+        }
+      });
+    }
+  }
     document.body.appendChild(drawer);
 
     document.getElementById('moduled-close').onclick = () => drawer.remove();
