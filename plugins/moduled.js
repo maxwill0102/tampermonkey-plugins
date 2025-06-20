@@ -1,13 +1,3 @@
-// ==UserScript==
-// @name         活动报名插件 V3.8（修复按钮事件）
-// @namespace    https://yourdomain.com
-// @version      3.8.1
-// @description  修复抓取商品按钮点击无效的问题
-// @match        https://*.kuajingmaihuo.com/*
-// @grant        GM_addStyle
-// @grant        GM_xmlhttpRequest
-// ==/UserScript==
-
 (function () {
   'use strict';
 
