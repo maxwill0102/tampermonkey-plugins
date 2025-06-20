@@ -96,7 +96,7 @@
         const data = JSON.parse(res.responseText);
         if (!data.success || !data.result) {
           console.error("❌ 接口返回异常", data);
-          alert("接口返回异常");
+          alert("接口返回失败，请检查网络或参数");
           return;
         }
 
@@ -104,29 +104,40 @@
         const scrollCtx = data.result.searchScrollContext || "";
         const hasMore = data.result.hasMore;
 
-        // 初始化全局缓存
+        // 初始化全局缓存变量
         if (!window.__moduled_all_products__) {
           window.__moduled_all_products__ = [];
         }
-        window.__moduled_all_products__.push(...list);
-        console.log(`✅ 已获取 ${window.__moduled_all_products__.length} 条商品`);
 
-        // 递归继续
+        // 添加当前批次数据
+        window.__moduled_all_products__.push(...list);
+
+        // ✅ 打印当前批次
+        console.log(`📦 当前批次 ${list.length} 条数据：`);
+        list.forEach((item, idx) => {
+          const productName = item.productName || '未知商品';
+          const productId = item.productId || '无ID';
+          console.log(`  #${window.__moduled_all_products__.length - list.length + idx + 1}: ${productName} (ID: ${productId})`);
+        });
+
+        // 是否继续递归
         if (hasMore && scrollCtx) {
-          console.log("📦 加载下一页...");
-          fetchProducts(activityId, scrollCtx);
+          const delay = Math.floor(800 + Math.random() * 400); // 800~1200ms 延迟
+          console.log(`⏳ 等待 ${delay}ms 加载下一页...`);
+          setTimeout(() => {
+            fetchProducts(activityId, scrollCtx);
+          }, delay);
         } else {
-          console.log("✅ 所有商品已加载完毕，共计：", window.__moduled_all_products__.length);
-          // 你可以在这里触发后续处理逻辑（例如显示在页面上）
+          console.log(`✅ 商品抓取完成，共计 ${window.__moduled_all_products__.length} 条`);
         }
       } catch (e) {
-        console.error("❌ 解析数据失败", e);
-        alert("数据解析失败");
+        console.error("❌ 返回数据解析失败", e);
+        alert("接口返回格式异常，无法解析");
       }
     },
     onerror(err) {
-      console.error("❌ 请求错误", err);
-      alert("商品数据请求失败");
+      console.error("❌ 请求异常", err);
+      alert("网络请求失败，请检查cookie或登录状态");
     }
   });
 }
