@@ -161,6 +161,7 @@
 
   // —— 拉取并渲染首批 —— 
   function fetchAndRenderFirst(type, thematicId, config) {
+    window.__moduled_config__ = config;
     renderSubmitPage(config);
     GM_xmlhttpRequest({
       method:'POST',
@@ -255,8 +256,15 @@ function submitEnrollment() {
       const skcId = Number(skcLine);
       const skuId = Number(extLine.split(':')[1]);
       const price = Math.round(parseFloat(tr.children[3].innerText.slice(1)) * 100);
-      const stock = Number(document.getElementById('moduled-stock-input').value) 
-                    || Number(tr.children[5].innerText);
+// before: 
+// const stock = Number(document.getElementById('moduled-stock-input').value) || Number(tr.children[5].innerText);
+
+// after:
+const cfg   = window.__moduled_config__ || {};
+const stock = cfg.stockVal 
+  ? Number(cfg.stockVal) 
+  : Number(tr.children[5].innerText);
+
       const sessionIds = window.__moduled_sessionIds__ || [];
       allItems.push({
         productId: Number(pidLine),
