@@ -299,7 +299,7 @@ const stock = cfg.stockVal
   console.log('📤 报名 Payload (首条测试):', payload);
   GM_xmlhttpRequest({
     method: 'POST',
-    url: 'https://seller.kuajingmaihuo.com/marvel-mms/cn/api/kiana/gambit/marketing/enroll/semi/submit',
+    url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/submit',
     headers: {
       'Content-Type': 'application/json',
       'anti-content': ANTI_CONTENT,
@@ -326,7 +326,7 @@ const stock = cfg.stockVal
   function validateEnrollment(type, them) {
     GM_xmlhttpRequest({
       method:'POST',
-      url:'https://seller.kuajingmaihuo.com/marvel-mms/cn/api/kiana/gambit/marketing/enroll/activity/detail',
+      url:'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/activity/detail',
       headers:{ 'Content-Type':'application/json','anti-content':ANTI_CONTENT,'mallid':MALLID },
       data:JSON.stringify({ activityType:Number(type), activityThematicId:Number(them) }),
       onload(res) {
