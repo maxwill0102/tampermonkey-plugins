@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         活动报名插件 V4.8.8（保V4.8.6 UI + 自动提交报名 + 暂停/继续/关闭）
+// @name         活动报名插件 V4.8.8（保V4.8.6 UI + 自动提交报名 + 暂停/继续 + 延迟）
 // @namespace    https://yourdomain.com
 // @version      4.8.8
-// @description  美化界面、标题截断、自动提交报名并刷新校验，兼容列表页/详情页抽屉逻辑，新增暂停/继续/关闭功能。
+// @description  美化界面、标题截断、自动提交报名并刷新校验，兼容列表页/详情页抽屉逻辑，新增暂停/继续功能并在每条提交后随机延迟，防止“操作过快”。
 // @match        https://agentseller.temu.com/activity/marketing-activity*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
@@ -18,7 +18,7 @@
   window.__moduled_queue__  = [];
   window.__moduled_paused__ = false;
 
-  // —— 样式（保留 V4.8.6 样式 + 暂停/继续/关闭） —— 
+  // —— 样式（保留 V4.8.6 样式 + 暂停/继续） —— 
   GM_addStyle(`
     #moduled-drawer {
       position: fixed; top: 0; right: 0;
@@ -45,17 +45,12 @@
       width: 100%; padding: 8px; font-size: 14px;
       border: 1px solid #ccc; border-radius: 4px;
     }
-    #moduled-submit,
-    #moduled-pause,
-    #auto-submit-btn {
-      padding: 8px 16px; font-size: 14px;
-      border: none; color: #fff; border-radius: 4px; cursor: pointer;
-    }
-    #moduled-submit { background: #007bff; }
-    #moduled-pause { background: #dc3545; }
+    #moduled-submit { padding: 8px 16px; font-size: 14px; background: #007bff; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+    #moduled-pause { padding: 8px 16px; font-size: 14px; background: #dc3545; color:#fff; border:none; border-radius:4px; cursor:pointer; }
     #moduled-pause.paused { background: #28a745; }
     #auto-submit-btn {
-      background: #28a745;
+      padding: 8px 16px; font-size: 14px; background: #28a745; color:#fff;
+      border:none; border-radius:4px; cursor:pointer;
       position: fixed; top: 100px; right: 30px; z-index:1000000;
     }
     table {
@@ -83,7 +78,7 @@
   // —— React Fiber Props 工具 —— 
   function getReactProps(dom) {
     for (const k in dom) {
-      if (k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$')) {
+      if (k.startsWith('__reactFiber$')||k.startsWith('__reactInternalInstance$')) {
         const f = dom[k];
         return (f.return && f.return.memoizedProps)
             || (f._currentElement && f._currentElement.props)
@@ -153,7 +148,8 @@
         <tr data-idx="${idx}">
           <td>
             <div class="product-cell">
-              <img src="${pic}" /><div class="title" title="${item.productName}">${title}</div>
+              <img src="${pic}" />
+              <div class="title" title="${item.productName}">${title}</div>
             </div>
           </td>
           <td>${skc.skcId}<br>货号:${sku.extCode||''}</td>
@@ -183,14 +179,13 @@
         'user-agent':navigator.userAgent
       },
       data: JSON.stringify({
-        activityType:+type,
-        activityThematicId:+them,
-        rowCount:50,
-        addSite:true
+        activityType: Number(type),
+        activityThematicId: Number(them),
+        rowCount: 50,
+        addSite: true
       }),
       onload(res){
         const d = JSON.parse(res.responseText);
-        console.log('◀️ Response:', d);
         if(d.success && d.result.matchList) {
           fillFirstProduct(d.result.matchList, cfg);
         }
@@ -198,8 +193,9 @@
     });
   }
 
-  // —— 点击“🧠 自动提交报名” 时 —— 
+  // —— 点击“🧠 自动提交报名” —— 
   function submitEnrollment() {
+    // 1) 获得活动 type/them
     let type, them;
     const sel = document.querySelector('input[name="activity"]:checked');
     if(sel) {
@@ -211,6 +207,7 @@
       if(!them) return alert('请先选择活动或打开详情页');
     }
 
+    // 2) 收集“是”的商品到队列
     const cfg  = window.__moduled_config__;
     const raws = window.__moduled_rawItems__||[];
     const queue = [];
@@ -243,95 +240,94 @@
     processQueue(+type, +them);
   }
 
-  // —— 列队处理 —— 
-function processQueue(type, them) {
-  if (window.__moduled_paused__) return;
+  // —— 循环处理队列 —— 
+  function processQueue(type, them) {
+    if(window.__moduled_paused__) return;
 
-  const item = window.__moduled_queue__.shift();
-  if (!item) {
-    // 队列空时，把暂停按钮变成关闭（或隐藏）
-    const btn = document.getElementById('moduled-pause');
-    btn.innerText = '关闭';
-    btn.onclick = () => document.getElementById('moduled-drawer').remove();
-    return;
+    const item = window.__moduled_queue__.shift();
+    if(!item) {
+      // 全部完成：把暂停按钮变成“关闭”
+      const btn = document.getElementById('moduled-pause');
+      btn.classList.remove('paused');
+      btn.innerText = '关闭';
+      btn.onclick = () => document.getElementById('moduled-drawer').remove();
+      return;
+    }
+
+    submitSingle(type, them, item)
+      .then(() => {
+        const delay = 800 + Math.floor(Math.random()*400);
+        setTimeout(() => processQueue(type, them), delay);
+      })
+      .catch(() => {
+        const delay = 800 + Math.floor(Math.random()*400);
+        setTimeout(() => processQueue(type, them), delay);
+      });
   }
 
-  submitSingle(type, them, item)
-    .then(() => {
-      const delay = 800 + Math.floor(Math.random() * 400);
-      setTimeout(() => processQueue(type, them), delay);
-    })
-    .catch(() => {
-      const delay = 800 + Math.floor(Math.random() * 400);
-      setTimeout(() => processQueue(type, them), delay);
-    });
-}
   // —— 提交单条 —— 
   function submitSingle(type, them, it) {
     const payload = {
       activityType: type,
       activityThematicId: them,
-      productList: [{
+      productList: [ {
         productId: it.productId,
         activityStock: it.stockVal,
         sessionIds: it.sessionIds,
-        siteInfoList: [{
+        siteInfoList:[{
           siteId: it.siteId,
-          skcList: [{
+          skcList:[{
             skcId: it.skcId,
-            skuList: [{ skuId: it.skuId, activityPrice: it.activityPrice }]
+            skuList:[{
+              skuId: it.skuId,
+              activityPrice: it.activityPrice
+            }]
           }]
         }]
-      }]
+      } ]
     };
-     return new Promise((resolve, reject) => {
-    GM_xmlhttpRequest({
-      method: 'POST',
-      url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/submit',
-      headers: { 'Content-Type': 'application/json', 'mallid': MALLID },
-      data: JSON.stringify(payload),
-      onload(res) {
-        const d = JSON.parse(res.responseText);
-        const rows = document.querySelectorAll('#product-rows tr');
-        const rowIndex = /* 计算当前行 */;
-        const row = rows[rowIndex];
-        if (d.success) {
-          row && (row.querySelector('.status').innerText = '✅');
+    return new Promise((resolve, reject) => {
+      GM_xmlhttpRequest({
+        method:'POST',
+        url:'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/submit',
+        headers:{ 'Content-Type':'application/json','mallid':MALLID },
+        data: JSON.stringify(payload),
+        onload(res){
+          const d = JSON.parse(res.responseText);
+          // 更新表格行状态
+          const rows = document.querySelectorAll('#product-rows tr');
+          const idx  = rows.length - 1 - window.__moduled_queue__.length;
+          const row  = rows[idx];
+          if(d.success) {
+            row && (row.querySelector('.status').innerText = '✅');
+          } else {
+            row && (row.querySelector('.status').innerText = '❌');
+          }
           resolve();
-        } else {
-          row && (row.querySelector('.status').innerText = '❌');
-          resolve();  // 失败也继续下一个
+        },
+        onerror(err){
+          reject(err);
         }
-      },
-      onerror(err) {
-        reject(err);
-      }
       });
     });
-    console.log('▶️ Submitting single payload:', JSON.stringify(payload));
   }
 
-  // —— 切换 暂停 / 继续 / 关闭 —— 
-function togglePause() {
-  window.__moduled_paused__ = !window.__moduled_paused__;
-  updatePauseBtn();
-  if (!window.__moduled_paused__) {
-    const sel  = document.querySelector('input[name="activity"]:checked');
-    const type = sel ? +sel.dataset.type : +new URLSearchParams(location.search).get('type');
-    const them = sel ? +sel.dataset.thematicid : +new URLSearchParams(location.search).get('thematicId');
-    processQueue(type, them);  // 恢复时启动处理
+  // —— 切换 暂停 / 继续 —— 
+  function togglePause() {
+    window.__moduled_paused__ = !window.__moduled_paused__;
+    updatePauseBtn();
+    if(!window.__moduled_paused__) {
+      const sel  = document.querySelector('input[name="activity"]:checked');
+      const type = sel? +sel.dataset.type : +new URLSearchParams(location.search).get('type');
+      const them = sel? +sel.dataset.thematicid : +new URLSearchParams(location.search).get('thematicId');
+      processQueue(type, them);
+    }
   }
-}
 
   function updatePauseBtn() {
     const b = document.getElementById('moduled-pause');
     if(!b) return;
-    if(!window.__moduled_queue__.length) {
-      b.classList.remove('paused');
-      b.innerText = '关闭';
-      b.onclick = () => document.getElementById('moduled-drawer').remove();
-    }
-    else if(window.__moduled_paused__) {
+    if(window.__moduled_paused__) {
       b.classList.add('paused');
       b.innerText = '继续';
     } else {
@@ -340,7 +336,7 @@ function togglePause() {
     }
   }
 
-  // —— 列表/详情页 抽屉逻辑 & 活动抓取 —— 
+  // —— 列表/详情页 抽屉逻辑 —— 
 
   function fetchActivityData(){
     const longCon = document.getElementById('moduled-long');
@@ -427,9 +423,8 @@ function togglePause() {
     d.querySelector('#moduled-close').onclick = () => d.remove();
     d.querySelector('#moduled-price-mode').onchange = function(){
       d.querySelector('#moduled-price-label').textContent =
-        this.value==='profit' ? '利润率不低于' : '活动价格不低于';
+        this.value==='profit'?'利润率不低于':'活动价格不低于';
     };
-
     if(!isDetail){
       d.querySelectorAll('.moduled-tab').forEach(tab=>{
         tab.onclick = ()=>{
@@ -438,8 +433,7 @@ function togglePause() {
           d.querySelector('#moduled-tab-'+tab.dataset.tab).classList.add('active');
         };
       });
-      fetchActivityData();
-      fetchShortTermActivities();
+      fetchActivityData(); fetchShortTermActivities();
       d.querySelector('#moduled-submit').onclick = ()=>{
         const mode     = d.querySelector('#moduled-price-mode').value;
         const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
@@ -458,14 +452,14 @@ function togglePause() {
         document.body.appendChild(btn);
       };
     } else {
-      d.querySelector('#moduled-submit').onclick = () => {
+      d.querySelector('#moduled-submit').onclick = ()=>{
         const mode     = d.querySelector('#moduled-price-mode').value;
         const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
         if(!priceVal) return alert('请填写活动价格');
         const stockVal = d.querySelector('#moduled-stock-input').value.trim();
-        const params = new URLSearchParams(location.search);
-        const type   = params.get('type')||'13';
-        const them   = params.get('thematicId')||params.get('thematicid');
+        const params   = new URLSearchParams(location.search);
+        const type     = params.get('type')||'13';
+        const them     = params.get('thematicId')||params.get('thematicid');
         fetchAndRenderFirst(type, them, {
           mode, priceVal, stockVal,
           current:1, total:1, success:0, attempt:0
@@ -479,7 +473,6 @@ function togglePause() {
     }
   }
 
-  // —— 根据 URL 判断是列表还是详情 —— 
   function produceDrawer(){
     const p = location.pathname;
     const isList   = /^\/activity\/marketing-activity\/?$/.test(p);
