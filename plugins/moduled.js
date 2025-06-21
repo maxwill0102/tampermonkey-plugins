@@ -256,11 +256,11 @@
 
     submitSingle(type, them, item)
       .then(() => {
-        const delay = 800 + Math.floor(Math.random()*400);
+        const delay = 5000 + Math.floor(Math.random()*400);
         setTimeout(() => processQueue(type, them), delay);
       })
       .catch(() => {
-        const delay = 800 + Math.floor(Math.random()*400);
+        const delay = 5000 + Math.floor(Math.random()*400);
         setTimeout(() => processQueue(type, them), delay);
       });
   }
