@@ -190,6 +190,7 @@
       }),
       onload(res){
         const d = JSON.parse(res.responseText);
+        console.log('◀️ Response:', d);
         if(d.success && d.result.matchList) {
           fillFirstProduct(d.result.matchList, cfg);
         }
@@ -281,6 +282,7 @@
         data:JSON.stringify(payload),
         onload(res){
           const d = JSON.parse(res.responseText);
+          console.log('◀️ Response:', d);
           const rows = document.querySelectorAll('#product-rows tr');
           const row  = rows[rows.length - window.__moduled_queue__.length - 1];
           if(d.success) {
@@ -295,6 +297,7 @@
         }
       });
     });
+    console.log('▶️ Submitting single payload:', JSON.stringify(payload));
   }
 
   // —— 切换 暂停 / 继续 / 关闭 —— 
