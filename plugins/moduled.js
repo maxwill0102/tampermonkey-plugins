@@ -30,6 +30,45 @@
     .moduled-table-row { border-bottom:1px dashed #ddd; }
   `);
 
+   // 渲染报名详情页
+  function renderSubmitPage(config) {
+    const drawer = document.getElementById('moduled-drawer');
+    drawer.innerHTML = `
+      <h2>报名详情 <span id="moduled-close">❌</span></h2>
+      <div class="moduled-section">
+        <p>价格方式：${config.mode==='profit'?'利润率不低于':'价格不低于固定值'} ${config.priceVal}</p>
+        <p>活动库存：${config.stockVal||'默认'}</p>
+      </div>
+      <div class="moduled-section">
+        <p>当前活动：${config.current||1} / ${config.total}</p>
+        <p>报名成功：${config.success||0} / ${config.attempt||0}</p>
+        <p>未报名数量：${(config.attempt-config.success)||0}</p>
+      </div>
+      <div class="moduled-section">
+        <table width="100%" border="0" cellspacing="0" cellpadding="5">
+          <thead class="moduled-table-header">
+            <div>商品标题</div><div>SKC</div><div>日常价格</div><div>活动申报价</div><div>是否条件</div><div>活动库存</div><div>是否成功</div>
+          </thead>
+          <tbody id="product-rows" class="moduled-tab-panel">
+            <tr><td colspan="7" align="center">等待数据填充...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="moduled-section" style="text-align:center">
+        <button id="moduled-pause">暂停</button>
+      </div>
+    `;
+    // 关闭返回
+    drawer.querySelector('#moduled-close').onclick = () => produceDrawer();
+  }
+  // 生产主界面（复用 createDrawer 名称）
+  function produceDrawer() {
+    const path = location.pathname;
+    const isList = /^\/activity\/marketing-activity\/?$/.test(path);
+    const isDetail = path.includes('/detail-new');
+    if (!isList && !isDetail) { alert('请打开营销活动列表或具体活动报名页面'); return; }
+    createDrawer(isDetail);
+  }
   // 抓取首批商品数据（测试）
   function fetchProductsOnce(type, thematicId) {
     GM_xmlhttpRequest({
@@ -104,15 +143,14 @@
     return {};
   }
 
-  // 抽屉构建
-  function createDrawer(isDetailPage) {
+function createDrawer(isDetail) {
     document.getElementById('moduled-drawer')?.remove();
-    const d=document.createElement('div'); d.id='moduled-drawer';
-    let html=`
+    const d = document.createElement('div'); d.id='moduled-drawer';
+    let html = `
       <h2>活动报名 V4.8.2 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group">
-          <label>价格设置方式</label>
+          <label>活动价格设置方式</label>
           <select id="moduled-price-mode"><option value="fixed">不低于固定值</option><option value="profit">利润率不低于</option></select>
         </div>
         <div class="moduled-input-group">
@@ -120,32 +158,37 @@
           <input type="number" id="moduled-price-input" placeholder="必填" />
         </div>
         <div class="moduled-input-group">
-          <label>库存（选填）</label><input type="number" id="moduled-stock-input" placeholder="默认" />
+          <label>活动库存（选填）</label>
+          <input type="number" id="moduled-stock-input" placeholder="默认" />
         </div>
       </div>`;
-    if(!isDetailPage) {
-      html+=`
+    if (!isDetail) {
+      html += `
       <div class="moduled-section"><strong>长期活动</strong><div id="moduled-long"></div></div>
       <div class="moduled-section"><strong>短期活动</strong><div class="moduled-tabs"><div class="moduled-tab active" data-tab="0">大促</div><div class="moduled-tab" data-tab="1">秒杀</div><div class="moduled-tab" data-tab="2">清仓</div></div><div id="moduled-short-panels"><div class="moduled-tab-panel active" id="moduled-tab-0"></div><div class="moduled-tab-panel" id="moduled-tab-1"></div><div class="moduled-tab-panel" id="moduled-tab-2"></div></div></div>`;
     }
-    html+=`<div class="moduled-section" style="text-align:center"><button id="moduled-submit">立即报名</button></div>`;
-    d.innerHTML=html; document.body.appendChild(d);
-    d.querySelector('#moduled-close').onclick=()=>d.remove();
-    d.querySelector('#moduled-price-mode').onchange=function(){ d.querySelector('#moduled-price-label').textContent=this.value==='profit'?'利润率不低于':'活动价格不低于'; };
-    if(!isDetailPage) {
-      // 切Tab
-      d.querySelectorAll('.moduled-tab').forEach(t=>t.onclick=()=>{ d.querySelectorAll('.moduled-tab, .moduled-tab-panel').forEach(e=>e.classList.remove('active')); t.classList.add('active'); d.querySelector('#moduled-tab-'+t.dataset.tab).classList.add('active'); });
+    html += `<div class="moduled-section" style="text-align:center"><button id="moduled-submit">立即报名</button></div>`;
+    d.innerHTML = html; document.body.appendChild(d);
+    d.querySelector('#moduled-close').onclick = () => d.remove();
+    d.querySelector('#moduled-price-mode').onchange = function(){ d.querySelector('#moduled-price-label').textContent = this.value==='profit'?'利润率不低于':'活动价格不低于'; };
+
+    if (!isDetail) {
+      d.querySelectorAll('.moduled-tab').forEach(tab=>tab.onclick=()=>{ d.querySelectorAll('.moduled-tab, .moduled-tab-panel').forEach(e=>e.classList.remove('active')); tab.classList.add('active'); d.querySelector('#moduled-tab-'+tab.dataset.tab).classList.add('active'); });
       fetchActivityData(); fetchShortTermActivities();
-      d.querySelector('#moduled-submit').onclick=()=>{
-        const sel=d.querySelector('input[name="activity"]:checked'); if(!sel) return alert('请选择活动');
-        const url=`https://agentseller.temu.com/activity/marketing-activity/detail-new?type=${sel.dataset.type}&thematicId=${sel.dataset.thematicid}`;
-        window.open(url,'_blank');
+      d.querySelector('#moduled-submit').onclick = () => {
+        const mode = d.querySelector('#moduled-price-mode').value;
+        const priceVal = d.querySelector('#moduled-price-input').value.trim(); if (!priceVal) return alert('请填写活动价格');
+        const stockVal = d.querySelector('#moduled-stock-input').value.trim();
+        const selected = Array.from(d.querySelectorAll('input[name="activity"]:checked'));
+        if (!selected.length) return alert('请先选择活动');
+        renderSubmitPage({ mode, priceVal, stockVal, current:1, total:selected.length, success:0, attempt:0 });
       };
     } else {
-      d.querySelector('#moduled-submit').onclick=()=>{
-        const nativeBtn=document.querySelector('button[data-testid="beast-core-button"]');
-        if(nativeBtn) nativeBtn.click();
-        else alert('未找到立即报名按钮');
+      d.querySelector('#moduled-submit').onclick = () => {
+        const mode = d.querySelector('#moduled-price-mode').value;
+        const priceVal = d.querySelector('#moduled-price-input').value.trim(); if (!priceVal) return alert('请填写活动价格');
+        const stockVal = d.querySelector('#moduled-stock-input').value.trim();
+        renderSubmitPage({ mode, priceVal, stockVal, current:1, total:1, success:0, attempt:0 });
       };
     }
   }
