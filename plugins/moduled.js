@@ -121,6 +121,27 @@
     text-align: center;
     width: 80px;
   }
+  /* —— 短期活动表格美化 —— */
+/* 表格外层滚动容器 */
+.moduled-short-table-wrapper {
+  max-height: 260px; overflow-y: auto; border:1px solid #eee; margin-top:8px;
+}
+/* 表格整体样式 */
+.moduled-short-table {
+  width:100%; border-collapse:collapse; table-layout:fixed; font-size:14px;
+}
+.moduled-short-table th,
+.moduled-short-table td {
+  padding:8px; border-bottom:1px solid #eee; vertical-align:middle;
+}
+.moduled-short-table thead th {
+  background:#fafafa; position:sticky; top:0; z-index:1; text-align:left;
+}
+.moduled-short-table tbody tr:nth-child(odd){background:#fdfdfd;}
+.moduled-short-table tbody tr:hover {background:#f0f8ff;}
+/* 第一列多选框居中 */
+.moduled-short-table td.select-col { text-align:center; width:60px; }
+
   `);
 
   /*** —— React Props 助手 —— ***/
@@ -167,18 +188,22 @@
     if (!isDetail) {
       html += `
         <div class="moduled-section"><strong>长期活动</strong><div id="moduled-long"></div></div>
-        <div class="moduled-section"><strong>短期活动</strong>
-          <div class="moduled-tabs">
-            <div class="moduled-tab active" data-tab="0">大促</div>
-            <div class="moduled-tab" data-tab="1">秒杀</div>
-            <div class="moduled-tab" data-tab="2">清仓</div>
-          </div>
-          <div id="moduled-short-panels">
-            <div class="moduled-tab-panel active" id="moduled-tab-0"></div>
-            <div class="moduled-tab-panel" id="moduled-tab-1"></div>
-            <div class="moduled-tab-panel" id="moduled-tab-2"></div>
-          </div>
-        </div>`;
+       <div class="moduled-section"><strong>短期活动</strong>
+        <div class="moduled-short-table-wrapper">
+          <table class="moduled-short-table">
+            <thead>
+             <tr>
+              <th class="select-col">选择</th>
+              <th>主题</th>
+              <th>报名时间</th>
+              <th>活动时间</th>
+              <th>已报名</th>
+            </tr>
+          </thead>
+          <tbody id="moduled-short-body"></tbody>
+        </table>
+      </div>
+    </div>`;
     }
 
     // “立即报名”按钮
@@ -532,31 +557,46 @@ function fetchActivityData() {
 
   /*** —— 拉取列表页短期活动 —— ***/
   async function fetchShortTermActivities() {
-    const panels = [0,1,2].map(i => document.getElementById('moduled-tab-'+i));
-    const roots = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
-    if (roots.length<2) return;
-    const tabs = roots[1].querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
-    for (let i=0; i<tabs.length; i++) {
-      tabs[i].click(); await new Promise(r=>setTimeout(r,400));
-      panels[i].innerHTML = `
-        <div class="moduled-table-header">
-          <div>主题</div><div>报名时间</div><div>活动时间</div><div>已报名</div><div>选择</div>
-        </div>`;
-      document.querySelectorAll('[data-testid="beast-core-table-body-tr"]').forEach(row => {
-        const txt = row.querySelector('[data-testid="beast-core-table-td"]')?.innerText.trim()||'';
-        let type='', them='';
-        try {
-          const btn = row.querySelector('a[data-testid="beast-core-button-link"]');
-          ({activityType:type, activityThematicId:them} = getReactProps(btn));
-        } catch {}
-        panels[i].innerHTML += `
-          <div class="moduled-table-row">
-            <div>${txt}</div><div>–</div><div>–</div><div>–</div>
-            <div><input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}" /></div>
-          </div>`;
-      });
-    }
+  const tbody = document.getElementById('moduled-short-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';  // 先清空
+
+  // 找到短期活动列表容器
+  const roots = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
+  if (roots.length<2) return;
+  const tabs = roots[1].querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+
+  for (let i = 0; i < tabs.length; i++) {
+    tabs[i].click();
+    // 等待渲染
+    await new Promise(r => setTimeout(r, 400));
+
+    // 本页所有行
+    const rows = document.querySelectorAll('[data-testid="beast-core-table-body-tr"]');
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
+      if (cells.length < 5) return;
+      const [title, applyTime, actTime, joined] = Array.from(cells).slice(0,4).map(td=>td.innerText.trim());
+      // 拿到 type/thematicId
+      let type='', them='';
+      try {
+        const btn = row.querySelector('a[data-testid="beast-core-button-link"]');
+        ({activityType:type, activityThematicId:them} = getReactProps(btn));
+      } catch {}
+      tbody.innerHTML += `
+        <tr>
+          <td class="select-col">
+            <input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}" />
+          </td>
+          <td>${title}</td>
+          <td>${applyTime}</td>
+          <td>${actTime}</td>
+          <td>${joined}</td>
+        </tr>`;
+    });
   }
+}
+
 
   /*** —— 启动入口 —— ***/
   function produceDrawer() {
