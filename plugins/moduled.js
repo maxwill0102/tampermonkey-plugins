@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         活动报名插件 V4.8.8＋（保表格渲染 + 悬浮暂停/继续）
+// @name         活动报名插件 V4.8.8＋（保表格渲染 + 悬浮暂停/继续 + 短期活动修复）
 // @namespace    https://yourdomain.com
-// @version      4.8.8.3
-// @description  保留 V4.8.6 UI，批量拉取 & 一次性提交报名，悬浮“暂停/继续”，优化渲染：仅更新统计、不重绘表格，避免闪烁。兼容列表页/详情页抽屉。
+// @version      4.8.8.3-fixed-short
+// @description  保留 V4.8.6 UI，批量拉取 & 一次性提交报名，悬浮“暂停/继续”，优化渲染：仅更新统计、不重绘表格，避免闪烁。兼容列表页/详情页抽屉。修复短期活动 Tab 与数据错位问题。
 // @match        https://agentseller.temu.com/activity/marketing-activity*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
@@ -15,11 +15,11 @@
   const MALLID       = '634418223153529';
   const ANTI_CONTENT = '0aqAfoixYySYj9E2J0didyxgjRAwIqP2ID3kKGzdvqe84kyjIs4HyQfYOmjkrrze-crCiTnixgSUJIf0UKVZgmvQ75Eo_Bl6DEfLU9TF9-475E8cqUGNjYTATLJVJJqWySNB6kUA-xv1ltrWo4j80KfDIeHrC4H_5ekuK9QxQhAxvj9Q_P7hDAT4RTMrofxM5qYQUWAPzhC0WP-cTojUGQUfhZBM448owrxCtZ01vN9jxWjo087lM5hcCnRcBL02IflDP6slH4jZfiC0WUuiDbCQaXnHP7N_2x4t8H9RY2Xbs7UzRP17UlcguQbXRT1XElhr0AuaDJRDMSn88Ai5HNunGj2yyqMNtAcvWouNUwqAud9jnG__Z_Exp1l7pVnYYSB-Ub2L5IXRayS5QKvxL9vyu6BntuXBYSR2a8nqQ5RwjMStfIcXj6a5sljEe5FpqKek4ZlKK3GVq-2gw-2b_dcP0s_PPp3DKJuLtomM_QrzMFzESn2Ues4L4ZfSSRvdfXpV90GmEsbKvnlyvbJdmKkAmwpH-GzctDI4Z8bBkSO1eFK1yZCGZTSFhgq6wTtag96vwP0rvpgOMzEVgnwqkgs7hGqPOdzrdhgqKRZu4Y61vLS31aj1ZcDOoaPHL52nPmkd4bKAA8W_LvnOSy28dLdpDOIj2afFRvTt51-fsn-_ICH1KfzO0ZR-szvBDmKjJB_QffwpggAygXKvEYnFkTP5gWr28VB64SU3lrVVNArqnrc6ZrDgYcQYVAqQz1JXvLXeXGVaRTGqi8K1eWqLiVWK0ronxlyU2gJ';
 
-  window.__moduled_paused__        = false;   // 暂停标志
-  window.__moduled_scrollContext__ = '';      // 下次 /match 用的 scrollContext
-  window.__moduled_type__          = 13;      // 当前活动 type
-  window.__moduled_thematicId__    = null;    // 当前 thematicId
-  window.__moduled_config__        = {        // 统计数据
+  window.__moduled_paused__        = false;
+  window.__moduled_scrollContext__ = '';
+  window.__moduled_type__          = 13;
+  window.__moduled_thematicId__    = null;
+  window.__moduled_config__        = {
     mode: 'fixed',
     priceVal: 0,
     stockVal: '',
@@ -31,141 +31,62 @@
 
   /*** —— 样式 —— ***/
   GM_addStyle(`
-    #moduled-drawer {
-      position: fixed; top: 0; right: 0;
-      width: 780px; height: 100%; background: #fff;
-      border-left: 1px solid #ccc; z-index: 999999;
-      overflow-y: auto; font-family: Arial, sans-serif;
-      box-shadow: -2px 0 8px rgba(0,0,0,0.2);
-    }
-    #moduled-drawer h2 {
-      font-size: 18px; padding: 16px; margin: 0;
-      border-bottom: 1px solid #eee; background: #fafafa;
-    }
-    #moduled-close {
-      position: absolute; top: 12px; right: 12px;
-      cursor: pointer; font-size: 16px;
-    }
-    .moduled-section { padding: 16px; border-bottom: 1px solid #eee; }
-    .moduled-input-group { margin-bottom: 12px; }
-    .moduled-input-group label {
-      display: block; font-size: 14px; margin-bottom: 4px;
-    }
-    .moduled-input-group input,
-    .moduled-input-group select {
-      width: 100%; padding: 8px; font-size: 14px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    #moduled-submit {
-      padding: 8px 16px; font-size: 14px;
-      border: none; color: #fff; border-radius: 4px; cursor: pointer;
-      background: #007bff;
-    }
-    #floating-pause-btn {
-      position: fixed; top: 100px; right: 30px; z-index:1000000;
-      padding: 8px 16px; font-size: 14px; border:none; color:#fff;
-      border-radius:4px; cursor:pointer; background:#dc3545;
-    }
-    #floating-pause-btn.paused {
-      background: #28a745;
-    }
-    table {
-      width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed;
-    }
-    th, td {
-      padding: 8px; border:1px solid #ddd; vertical-align: top; word-wrap: break-word;
-    }
-    th {
-      background: #f5f5f5; font-weight: 500; text-align: left;
-    }
-    .product-cell { display: flex; align-items: flex-start; }
-    .product-cell img {
-      width: 60px; height: 60px; object-fit: cover;
-      margin-right: 8px; border:1px solid #eee; border-radius:4px;
-    }
-    .product-cell .title {
-      flex: 1; font-size:14px; line-height:1.4;
-      overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
-    }
-    .moduled-tab { flex:1; text-align:center; padding:8px; cursor:pointer; font-weight:bold; }
-    .moduled-tab.active { color:red; border-bottom:2px solid red; }
-    .moduled-tab-panel { display:none; max-height:300px; overflow-y:auto; }
-    .moduled-tab-panel.active { display:block; }
-      /* —— 长期活动表格美化 —— */
-  #moduled-long table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 14px;
-    margin-top: 8px;
-  }
-  #moduled-long th, #moduled-long td {
-    padding: 8px;
-    border: 1px solid #eee;
-    vertical-align: middle;
-  }
-  #moduled-long th {
-    background: #fafafa;
-    text-align: left;
-    font-weight: 500;
-  }
-  /* 隔行背景 */
-  #moduled-long tbody tr:nth-child(odd) {
-    background: #fdfdfd;
-  }
-  /* 悬停高亮 */
-  #moduled-long tbody tr:hover {
-    background: #f0f8ff;
-  }
-  /* 选择列居中、宽度固定 */
-  #moduled-long td.select-col {
-    text-align: center;
-    width: 80px;
-  }
-  /* —— 短期活动表格美化 —— */
-/* 表格外层滚动容器 */
-.moduled-short-table-wrapper {
-  max-height: 260px; overflow-y: auto; border:1px solid #eee; margin-top:8px;
-}
-/* 表格整体样式 */
-.moduled-short-table {
-  width:100%; border-collapse:collapse; table-layout:fixed; font-size:14px;
-}
-.moduled-short-table th,
-.moduled-short-table td {
-  padding:8px; border-bottom:1px solid #eee; vertical-align:middle;
-}
-.moduled-short-table thead th {
-  background:#fafafa; position:sticky; top:0; z-index:1; text-align:left;
-}
-.moduled-short-table tbody tr:nth-child(odd){background:#fdfdfd;}
-.moduled-short-table tbody tr:hover {background:#f0f8ff;}
-/* 第一列多选框居中 */
-.moduled-short-table td.select-col { text-align:center; width:60px; }
-
+    /* 保留原样式 + 长期活动美化 + 新增短期活动表格 */
+    #moduled-drawer {position: fixed; top: 0; right: 0; width: 780px; height: 100%; background: #fff; border-left:1px solid #ccc; z-index:999999; overflow-y:auto; font-family:Arial,sans-serif; box-shadow:-2px 0 8px rgba(0,0,0,0.2);}
+    #moduled-drawer h2 {font-size:18px; padding:16px; margin:0; border-bottom:1px solid #eee; background:#fafafa; position:relative;}
+    #moduled-close {position:absolute; top:12px; right:12px; cursor:pointer; font-size:16px;}
+    .moduled-section {padding:16px; border-bottom:1px solid #eee;}
+    .moduled-input-group {margin-bottom:12px;}
+    .moduled-input-group label{display:block; font-size:14px; margin-bottom:4px;}
+    .moduled-input-group input, .moduled-input-group select{width:100%; padding:8px; font-size:14px; border:1px solid #ccc; border-radius:4px;}
+    #moduled-submit {padding:8px 16px; font-size:14px; border:none; color:#fff; border-radius:4px; cursor:pointer; background:#007bff;}
+    #floating-pause-btn {position:fixed; top:100px; right:30px; z-index:1000000; padding:8px 16px; font-size:14px; border:none; color:#fff; border-radius:4px; cursor:pointer; background:#dc3545;}
+    #floating-pause-btn.paused {background:#28a745;}
+    table {width:100%; border-collapse:collapse; margin-top:8px; table-layout:fixed;}
+    th, td {padding:8px; border:1px solid #ddd; vertical-align:top; word-wrap:break-word;}
+    th {background:#f5f5f5; font-weight:500; text-align:left;}
+    .product-cell {display:flex; align-items:flex-start;}
+    .product-cell img {width:60px; height:60px; object-fit:cover; margin-right:8px; border:1px solid #eee; border-radius:4px;}
+    .product-cell .title {flex:1; font-size:14px; line-height:1.4; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+    /* 长期活动 */
+    #moduled-long table {width:100%; border-collapse:collapse; font-size:14px; margin-top:8px;}
+    #moduled-long th, #moduled-long td {padding:8px; border:1px solid #eee; vertical-align:middle;}
+    #moduled-long th {background:#fafafa; font-weight:500;}
+    #moduled-long tbody tr:nth-child(odd){background:#fdfdfd;}
+    #moduled-long tbody tr:hover{background:#f0f8ff;}
+    #moduled-long td.select-col{text-align:center; width:80px;}
+    /* 短期活动 */
+    /* 克隆自页面的 Tab */
+    #moduled-short-tabs-container .TAB_outerWrapper_5-118-0 {width:auto!important;}
+    /* 我们的表格 */
+    .moduled-short-table-wrapper {max-height:240px; overflow-y:auto; border:1px solid #eee; margin-top:8px;}
+    .moduled-short-table {width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed;}
+    .moduled-short-table th, .moduled-short-table td {padding:8px; border-bottom:1px solid #eee; vertical-align:middle;}
+    .moduled-short-table thead th {background:#fafafa; position:sticky; top:0; z-index:1;}
+    .moduled-short-table tbody tr:nth-child(odd){background:#fdfdfd;}
+    .moduled-short-table tbody tr:hover{background:#f0f8ff;}
+    .moduled-short-table td.select-col{text-align:center; width:60px;}
   `);
 
-  /*** —— React Props 助手 —— ***/
+  /*** —— React Props —— ***/
   function getReactProps(dom) {
     for (const k in dom) {
-      if (k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$')) {
+      if (k.startsWith('__reactFiber$')||k.startsWith('__reactInternalInstance$')) {
         const f = dom[k];
-        return (f.return && f.return.memoizedProps)
-            || (f._currentElement && f._currentElement.props)
-            || {};
+        return (f.return&&f.return.memoizedProps)||(f._currentElement&&f._currentElement.props)||{};
       }
     }
     return {};
   }
 
-  /*** —— 构建初始抽屉 —— ***/
+  /*** —— 构建抽屉 —— ***/
   function createDrawer(isDetail) {
     document.getElementById('moduled-drawer')?.remove();
     const d = document.createElement('div');
     d.id = 'moduled-drawer';
 
-    // 配置区：价格模式 & 阈值
     let html = `
-      <h2>活动报名 V4.8.8 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 V4.8.8 <span id="moduled-close">✕</span></h2>
       <div class="moduled-section">
         <div class="moduled-input-group">
           <label>价格设置方式</label>
@@ -176,217 +97,189 @@
         </div>
         <div class="moduled-input-group">
           <label id="moduled-price-label">价格不低于</label>
-          <input type="number" id="moduled-price-input" placeholder="必填" />
+          <input type="number" id="moduled-price-input" placeholder="必填">
         </div>
         <div class="moduled-input-group">
           <label>活动库存（选填）</label>
-          <input type="number" id="moduled-stock-input" placeholder="默认" />
+          <input type="number" id="moduled-stock-input" placeholder="默认">
         </div>
       </div>`;
 
-    // 列表页时显示长期/短期活动
     if (!isDetail) {
+      // 长期活动
+      html += `<div class="moduled-section"><strong>长期活动</strong><div id="moduled-long"></div></div>`;
+      // 短期活动：先克隆页面上第二个原生 Tab，再放表格
       html += `
-        <div class="moduled-section"><strong>长期活动</strong><div id="moduled-long"></div></div>
-       <div class="moduled-section"><strong>短期活动</strong>
-       <!-- 直接引用页面上第二组 Tab -->
-       <div id="moduled-short-tabs-container"></div>
-       <!-- 我们自己的内容区：表格 -->
-       <div class="moduled-short-table-wrapper">
-         <table class="moduled-short-table">
-           <thead>
-             <tr>
-               <th>主题</th>
-               <th>报名时间</th>
-               <th>活动时间</th>
-               <th>已报名</th>
-               <th class="select-col">选择</th>   <!-- 放到最后一列 -->
-             </tr>
-           </thead>
-           <tbody id="moduled-short-body"></tbody>
-         </table>
-       </div>
+      <div class="moduled-section"><strong>短期活动</strong>
+        <div id="moduled-short-tabs-container"></div>
+        <div class="moduled-short-table-wrapper">
+          <table class="moduled-short-table">
+            <thead>
+              <tr>
+                <th>主题</th>
+                <th>报名时间</th>
+                <th>活动时间</th>
+                <th>已报名</th>
+                <th class="select-col">选择</th>
+              </tr>
+            </thead>
+            <tbody id="moduled-short-body"></tbody>
+          </table>
+        </div>
       </div>`;
     }
 
-    // “立即报名”按钮
-    html += `
-      <div class="moduled-section" style="text-align:center">
-        <button id="moduled-submit">立即报名</button>
-      </div>`;
+    html += `<div class="moduled-section" style="text-align:center">
+               <button id="moduled-submit">立即报名</button>
+             </div>`;
 
     d.innerHTML = html;
     document.body.appendChild(d);
-    // 抽屉渲染完毕后，克隆页面上第二个 TAB_outerWrapper_5-118-0
-const allTabs = document.querySelectorAll('.TAB_outerWrapper_5-118-0');
-if (allTabs.length >= 2) {
-  const clone = allTabs[1].cloneNode(true);
-  clone.style.marginTop = '8px';
-  document.getElementById('moduled-short-tabs-container').appendChild(clone);
-}
 
-
-    // 关闭按钮
-    d.querySelector('#moduled-close').onclick = () => {
-      const drawer = document.getElementById('moduled-drawer');
-      if (drawer) drawer.remove();
-  };
-
-
-    // 切换价格模式文字
-    d.querySelector('#moduled-price-mode').onchange = function() {
+    // 关闭
+    d.querySelector('#moduled-close').onclick = () => d.remove();
+    // 切换文字
+    d.querySelector('#moduled-price-mode').onchange = function(){
       d.querySelector('#moduled-price-label').textContent =
-        this.value === 'profit' ? '利润率不低于' : '价格不低于';
+        this.value==='profit'?'利润率不低于':'价格不低于';
     };
 
-    // 列表页逻辑：拉取活动 & 绑定报名
+    // 列表页逻辑
     if (!isDetail) {
-      d.querySelectorAll('.moduled-tab').forEach(tab => {
-        tab.onclick = () => {
-          d.querySelectorAll('.moduled-tab, .moduled-tab-panel').forEach(e => e.classList.remove('active'));
-          tab.classList.add('active');
-          d.querySelector('#moduled-tab-' + tab.dataset.tab).classList.add('active');
-        };
-      });
-      fetchActivityData();
-     // 在渲染完 #moduled-short-tabs-container 之后，动态克隆页面上第二组原生 Tabs，
-// 并为每个克隆出来的 tab 绑定“切换到对应面板、拉取对应数据”的事件。
+      renderLongTermTable();
 
-// 1. 把原生的第二组短期活动 Tab 拿出来
-const originalTabsWrapper = document.querySelectorAll('.TAB_outerWrapper_5-118-0')[1];
-if (originalTabsWrapper) {
-  // 2. 克隆整组 Tabs DOM
-  const cloneTabs = originalTabsWrapper.cloneNode(true);
-  cloneTabs.style.margin = '8px 0';
-  document.getElementById('moduled-short-tabs-container').appendChild(cloneTabs);
-
-  // 3. 拿到原生的 tab items 和 克隆后的 tab items
-  const origItems  = originalTabsWrapper.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
-  const cloneItems = cloneTabs.querySelectorAll   ('[data-testid="beast-core-tab-itemLabel-wrapper"]');
-
-  // 4. 依次给克隆的 tab 绑定 click
-  cloneItems.forEach((tabEl, idx) => {
-    tabEl.style.cursor = 'pointer';
-    tabEl.addEventListener('click', async () => {
-      // —— 切换克隆版的高亮状态 —— 
-      cloneItems.forEach(e => e.classList.remove('TAB_active_5-118-0'));
-      tabEl.classList.add('TAB_active_5-118-0');
-
-      // —— 切换我们自己面板的显示 & 隐藏 —— 
-      document.querySelectorAll('#moduled-short-panels .moduled-tab-panel')
-              .forEach(p => p.classList.remove('active'));
-      document.getElementById(`moduled-tab-${idx}`).classList.add('active');
-
-      // —— 让原页面也切换（以便拿到正确的数据） —— 
-      origItems[idx].click();
-      await new Promise(r => setTimeout(r, 400));  // 等原生内容切换完成
-
-      // —— 拉这一组短期活动并渲染到对应 panel —— 
-      renderShortTermPanel(idx);
-    });
-  });
-
-  // 默认触发第一个 tab 的数据拉取
-  cloneItems[0].click();
-}
-
-
-      d.querySelector('#moduled-submit').onclick = () => {
-        const mode     = d.querySelector('#moduled-price-mode').value;
-        const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
-        if (!priceVal) return alert('请填写价格阈值');
-        const stockVal = d.querySelector('#moduled-stock-input').value.trim();
-       // 收集所有被勾选的活动
-      const sels = Array.from(d.querySelectorAll('input[name="activity"]:checked'));
-      if (sels.length === 0) return alert('请至少选择一个活动');
-      window.__moduled_scrollContext__ = '';
-      // 如果你想对每个活动都跑一次流水线，可以这样：
-      window.__moduled_typeList__       = sels.map(el=>+el.dataset.type);
-      window.__moduled_thematicIdList__ = sels.map(el=>+el.dataset.thematicid);
- 
-        
-        window.__moduled_config__ = {
-          mode, priceVal, stockVal,
-          batchIndex: 0,
-          totalBatches: 0,
-          successCount: 0,
-          skipCount: 0
-        };
-
-        renderSubmitPage();
-        createFloatingPauseBtn();
-        fetchBatchAndSubmit();
-      };
+      // 克隆第二个原生 Tab
+      const tabsAll = document.querySelectorAll('.TAB_outerWrapper_5-118-0');
+      if (tabsAll.length>=2) {
+        const clone = tabsAll[1].cloneNode(true);
+        clone.style.marginTop = '8px';
+        d.querySelector('#moduled-short-tabs-container').appendChild(clone);
+        initShortTermListener(clone);
+      }
+      // 提交
+      d.querySelector('#moduled-submit').onclick = onSubmitList;
     }
-    // 详情页逻辑：直接用 URL 参数
+    // 详情页逻辑
     else {
-      d.querySelector('#moduled-submit').onclick = () => {
-        const mode     = d.querySelector('#moduled-price-mode').value;
-        const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
-        if (!priceVal) return alert('请填写价格阈值');
-        const stockVal = d.querySelector('#moduled-stock-input').value.trim();
-        const params = new URLSearchParams(location.search);
-        window.__moduled_type__       = +params.get('type') || 13;
-        window.__moduled_thematicId__ = +(params.get('thematicId')||params.get('thematicid'));
-        window.__moduled_scrollContext__ = '';
-        window.__moduled_config__ = {
-          mode, priceVal, stockVal,
-          batchIndex: 0,
-          totalBatches: 0,
-          successCount: 0,
-          skipCount: 0
-        };
-
-        renderSubmitPage();
-        createFloatingPauseBtn();
-        fetchBatchAndSubmit();
-      };
+      d.querySelector('#moduled-submit').onclick = onSubmitDetail;
     }
   }
 
-  async function renderShortTermPanel(idx) {
-  const panel = document.getElementById(`moduled-tab-${idx}`);
-  // 1. 先清 header
-  panel.innerHTML = `
-    <div class="moduled-table-header">
-      <div>主题</div><div>报名时间</div><div>活动时间</div><div>已报名</div><div>选择</div>
-    </div>`;
+  /*** —— 长期活动表格 —— ***/
+  function renderLongTermTable(){
+    const con = document.getElementById('moduled-long');
+    if(!con) return;
+    con.innerHTML = `
+      <table><thead>
+        <tr><th>类型</th><th>说明</th><th class="select-col">选择</th></tr>
+      </thead><tbody id="moduled-long-body"></tbody></table>`;
+    const tbody = document.getElementById('moduled-long-body');
+    document.querySelectorAll('.act-item_actItem__x2Uci').forEach(el=>{
+      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText.trim()||'';
+      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText.trim()||'';
+      let {activityType:type,activityThematicId:them} = getReactProps(el.querySelector('a[data-testid="beast-core-button-link"]'))||{};
+      tbody.innerHTML += `
+        <tr>
+          <td>${name}</td>
+          <td style="word-break:break-word;line-height:1.4">${desc}</td>
+          <td class="select-col">
+            <input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}">
+          </td>
+        </tr>`;
+    });
+  }
 
-  // 2. 等原生页面渲染好当前 idx 的 table rows
-  await new Promise(r => setTimeout(r, 200));
-  const rows = document.querySelectorAll('[data-testid="beast-core-table-body-tr"]');
+  /*** —— 初始化短期活动点击监听 —— ***/
+  function initShortTermListener(cloneTabWrapper) {
+    const body = document.getElementById('moduled-short-body');
+    // 取所有 tab label
+    const tabItems = cloneTabWrapper.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+    tabItems.forEach((tab, idx)=>{
+      tab.style.cursor = 'pointer';
+      tab.addEventListener('click', async ()=>{
+        // 同步高亮
+        tabItems.forEach(t=>t.classList.remove('TAB_active_5-118-0'));
+        tab.classList.add('TAB_active_5-118-0');
+        // 拉数据
+        await loadShortTermByIndex(idx, body);
+      });
+    });
+    // 默认加载第一个
+    if(tabItems[0]) tabItems[0].click();
+  }
 
-  // 3. 按照 idx 过滤出属于这一页的行并渲染
-  rows.forEach((row, rowIdx) => {
-    // 取第 idx 个 panel 对应那一组 rows，原生页面按点击顺序只显示一个 panel，
-    // 所以这里只需要渲染所有可见的 row。
-    const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
-    if (cells.length < 5) return;
-    const title     = cells[0].innerText.trim();
-    const applyTime = cells[1].innerText.trim();
-    const actTime   = cells[2].innerText.trim();
-    const joined    = cells[3].innerText.trim();
-    let them = '', type = '';
-    try {
-      const btn = row.querySelector('a[data-testid="beast-core-button-link"]');
-      ({activityType:type, activityThematicId:them} = getReactProps(btn));
-    } catch {}
-    // 最后一列放 checkbox
-    panel.innerHTML += `
-      <div class="moduled-table-row">
-        <div>${title}</div>
-        <div>${applyTime}</div>
-        <div>${actTime}</div>
-        <div>${joined}</div>
-        <div>
-          <input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}" />
-        </div>
-      </div>`;
-  });
-}
+  /*** —— 按 tabIndex 拉短期活动数据 —— ***/
+  async function loadShortTermByIndex(idx, body) {
+    body.innerHTML = '';
+    // 页面上第二个原生 tabs
+    const roots = document.querySelectorAll('.TAB_outerWrapper_5-118-0');
+    if(roots.length<2) return;
+    const container = roots[1];
+    const items = container.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+    if(!items[idx]) return;
+    // 点击原生
+    items[idx].click();
+    // 等待渲染
+    await new Promise(r=>setTimeout(r, 400));
 
+    // 读取 rows
+    document.querySelectorAll('[data-testid="beast-core-table-body-tr"]').forEach(row=>{
+      const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
+      if(cells.length<5) return;
+      const title     = cells[0].innerText.trim();
+      const applyTime = cells[1].innerText.trim();
+      const actTime   = cells[2].innerText.trim();
+      const joined    = cells[3].innerText.trim();
+      let {activityType:type,activityThematicId:them} =
+          getReactProps(row.querySelector('a[data-testid="beast-core-button-link"]'))||{};
+      body.innerHTML += `
+        <tr>
+          <td>${title}</td>
+          <td>${applyTime}</td>
+          <td>${actTime}</td>
+          <td>${joined}</td>
+          <td class="select-col">
+            <input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}">
+          </td>
+        </tr>`;
+    });
+  }
 
-  /*** —— 渲染“报名详情” —— ***/
+  /*** —— 提交（列表页） —— ***/
+  function onSubmitList(){
+    const d = document.getElementById('moduled-drawer');
+    const mode     = d.querySelector('#moduled-price-mode').value;
+    const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
+    if(!priceVal) return alert('请填写价格阈值');
+    const stockVal = d.querySelector('#moduled-stock-input').value.trim();
+    const sels = Array.from(d.querySelectorAll('input[name="activity"]:checked'));
+    if(!sels.length) return alert('请至少选择一个活动');
+    window.__moduled_type__       = +sels[0].dataset.type;
+    window.__moduled_thematicId__ = +sels[0].dataset.thematicid;
+    window.__moduled_config__ = { mode, priceVal, stockVal, current:0, total:0, success:0, attempt:0 };
+    renderSubmitPage(window.__moduled_config__);
+    createFloatingPauseBtn();
+    fetchBatchAndSubmit();
+  }
+
+  /*** —— 提交（详情页） —— ***/
+  function onSubmitDetail(){
+    const d = document.getElementById('moduled-drawer');
+    const mode     = d.querySelector('#moduled-price-mode').value;
+    const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
+    if(!priceVal) return alert('请填写价格阈值');
+    const stockVal = d.querySelector('#moduled-stock-input').value.trim();
+    const params   = new URLSearchParams(location.search);
+    window.__moduled_type__       = +params.get('type')||13;
+    window.__moduled_thematicId__ = + (params.get('thematicId')||params.get('thematicid'));
+    window.__moduled_config__ = { mode, priceVal, stockVal, current:0, total:0, success:0, attempt:0 };
+    renderSubmitPage(window.__moduled_config__);
+    createFloatingPauseBtn();
+    fetchBatchAndSubmit();
+  }
+
+  /*** —— renderSubmitPage、fetchBatchAndSubmit、submitBatch、fillFirstProduct、createFloatingPauseBtn、togglePause、updateStats…等，与原脚本***/
+ /*** —— 渲染“报名详情” —— ***/
   function renderSubmitPage() {
     const cfg = window.__moduled_config__;
     const d = document.getElementById('moduled-drawer');
@@ -692,19 +585,15 @@ function fetchActivityData() {
 }
 
 
+
   /*** —— 启动入口 —— ***/
-  function produceDrawer() {
+  function produceDrawer(){
     const p = location.pathname;
     const isList   = /^\/activity\/marketing-activity\/?$/.test(p);
     const isDetail = p.includes('/detail-new');
-    if (!isList && !isDetail) {
-      return alert('请打开营销活动列表或具体活动报名页面');
-    }
+    if(!isList && !isDetail) return alert('请打开营销活动列表或具体活动报名页面');
     createDrawer(isDetail);
   }
   window.__moduled_plugin__ = produceDrawer;
-
-  // 支持控制台手动执行
-  // window.__moduled_plugin__();
 
 })();
