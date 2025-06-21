@@ -65,7 +65,7 @@
     return {};
   }
 
-  // —— 渲染“报名详情”视图 —— 
+  // —— 渲染“报名详情” —— 
   function renderSubmitPage(cfg) {
     const d = document.getElementById('moduled-drawer');
     d.innerHTML = `
@@ -103,35 +103,37 @@
     d.querySelector('#moduled-close').onclick = produceDrawer;
   }
 
-  // —— 填充首批商品，并附加 data-sessionids —— 
+  // —— 填充首批商品（附加 data-skcid、data-skuid、data-sessionids） —— 
   function fillFirstProduct(list, cfg) {
     const tbody = document.getElementById('product-rows');
     tbody.innerHTML = '';
     list.forEach(item => {
-      const site = item.activitySiteInfoList[0]||{};
-      const skc  = site.skcList[0]||{};
-      const sku  = skc.skuList[0]||{};
-      const pic  = item.pictureUrl||'';
-      const full = item.productName||'';
+      const site = item.activitySiteInfoList[0] || {};
+      const skc  = site.skcList[0] || {};
+      const sku  = skc.skuList[0] || {};
+      const pic  = item.pictureUrl || '';
+      const full = item.productName || '';
       const wds  = full.split(/\s+/);
       const title= wds.slice(0,5).join(' ') + (wds.length>5?'...':'');
-      const skcId= skc.skcId||'';
-      const ext  = sku.extCode||'';
-      const daily= sku.dailyPrice!=null ? (sku.dailyPrice/100).toFixed(2):'';
-      const sug  = sku.suggestActivityPrice!=null ? (sku.suggestActivityPrice/100).toFixed(2):'';
-      const meet = (sku.suggestActivityPrice/100)>=cfg.priceVal?'是':'否';
-      const stock= meet==='是' ? (cfg.stockVal||item.suggestActivityStock):'';
-      // **附加 sessionIds**
+      const daily= sku.dailyPrice!=null ? (sku.dailyPrice/100).toFixed(2) : '';
+      const sug  = sku.suggestActivityPrice!=null ? (sku.suggestActivityPrice/100).toFixed(2) : '';
+      const meet = (sku.suggestActivityPrice/100) >= cfg.priceVal ? '是' : '否';
+      const stock= meet==='是' ? (cfg.stockVal||item.suggestActivityStock) : '';
       const sess = JSON.stringify(item.enrollSessionIdList||[]);
       tbody.innerHTML += `
-        <tr data-product-id="${item.productId}" data-sessionids='${sess}'>
+        <tr
+          data-product-id="${item.productId}"
+          data-sessionids='${sess}'
+          data-skcid="${skc.skcId||''}"
+          data-skuid="${sku.skuId||''}"
+        >
           <td>
             <div class="product-cell">
               <img src="${pic}" />
               <div class="title" title="${full}">${title}</div>
             </div>
           </td>
-          <td>${skcId}<br>货号:${ext}</td>
+          <td>${skc.skcId||''}<br>货号:${sku.extCode||''}</td>
           <td>¥${daily}</td>
           <td>¥${sug}</td>
           <td>${meet}</td>
@@ -143,7 +145,7 @@
 
   // —— 拉首批 & 保存 config —— 
   function fetchAndRenderFirst(type, thematicId, cfg) {
-    window.__moduled_config__ = cfg;       // 保存全局
+    window.__moduled_config__ = cfg;
     renderSubmitPage(cfg);
     GM_xmlhttpRequest({
       method:'POST',
@@ -227,24 +229,26 @@
     const all  = [];
     rows.forEach(tr=>{
       if (tr.children[4].innerText.trim()==='是') {
-        const pid   = Number(tr.dataset.productId);
-        const [skcL,extL] = tr.children[1].innerText.split('\n');
-        const skcId = Number(skcL);
-        const skuId = Number(extL.split(':')[1]);
-        const price = Math.round(parseFloat(tr.children[3].innerText.slice(1))*100);
-        // **从全局 cfg 里取库存**
-        const stock = cfg.stockVal
-          ? Number(cfg.stockVal)
-          : Number(tr.children[5].innerText);
-        // **从 data-sessionids 拿 sessionIds**
-        const sessionIds = JSON.parse(tr.dataset.sessionids||'[]');
-        all.push({productId:pid, skcId, skuId, activityPrice:price, stockVal:stock, siteId:100, sessionIds});
+        const pid       = Number(tr.dataset.productId);
+        const skcId     = Number(tr.dataset.skcid);
+        const skuId     = Number(tr.dataset.skuid);
+        const price     = Math.round(parseFloat(tr.children[3].innerText.slice(1))*100);
+        const stock     = cfg.stockVal
+                          ? Number(cfg.stockVal)
+                          : Number(tr.children[5].innerText);
+        const sessionIds= JSON.parse(tr.dataset.sessionids||'[]');
+        all.push({
+          productId: pid, skcId, skuId,
+          activityPrice: price,
+          stockVal: stock,
+          siteId: 100,
+          sessionIds
+        });
       }
     });
     if (!all.length) return alert('无满足条件商品可提交');
     console.log('🆗 满足条件列表:', all);
 
-    // 首条测试
     const first = all[0];
     console.log('🔨 测试提交首条:', first);
     if (!confirm(`确认测试提交首条 productId=${first.productId}?`)) return;
@@ -289,6 +293,9 @@
       onload(res) {
         console.log('📋 校验结果：', JSON.parse(res.responseText));
         alert('✅ 报名已完成并刷新价格');
+      },
+      onerror(err){
+        console.error(err);
       }
     });
   }
@@ -317,7 +324,7 @@
   async function fetchShortTermActivities(){
     const panels = [0,1,2].map(i=>document.getElementById('moduled-tab-'+i));
     const roots  = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
-    if (roots.length<2) return;
+    if(roots.length<2) return;
     const tabs = roots[1].querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
     for(let i=0;i<tabs.length;i++){
       tabs[i].click(); await new Promise(r=>setTimeout(r,400));
@@ -390,13 +397,13 @@
       fetchActivityData();
       fetchShortTermActivities();
       d.querySelector('#moduled-submit').onclick = ()=>{
-        const mode    = d.querySelector('#moduled-price-mode').value;
-        const priceVal= Number(d.querySelector('#moduled-price-input').value.trim());
+        const mode     = d.querySelector('#moduled-price-mode').value;
+        const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
         if(!priceVal) return alert('请填写活动价格');
-        const stockVal= d.querySelector('#moduled-stock-input').value.trim();
-        const sel     = d.querySelector('input[name="activity"]:checked');
+        const stockVal = d.querySelector('#moduled-stock-input').value.trim();
+        const sel      = d.querySelector('input[name="activity"]:checked');
         if(!sel)    return alert('请选择活动');
-        fetchAndRenderFirst(sel.dataset.type, sel.dataset.thematicid, {
+        fetchAndRenderFirst(sel.dataset.type, sel.dataset.thematicid,{
           mode, priceVal, stockVal,
           current:1, total:1, success:0, attempt:0
         });
@@ -404,14 +411,14 @@
       };
     } else {
       d.querySelector('#moduled-submit').onclick = ()=>{
-        const mode    = d.querySelector('#moduled-price-mode').value;
-        const priceVal= Number(d.querySelector('#moduled-price-input').value.trim());
+        const mode     = d.querySelector('#moduled-price-mode').value;
+        const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
         if(!priceVal) return alert('请填写活动价格');
-        const stockVal= d.querySelector('#moduled-stock-input').value.trim();
-        const p = new URLSearchParams(location.search);
-        const type= p.get('type')||'13';
-        const them= p.get('thematicId')||p.get('thematicid');
-        fetchAndRenderFirst(type, them, {
+        const stockVal = d.querySelector('#moduled-stock-input').value.trim();
+        const p        = new URLSearchParams(location.search);
+        const type     = p.get('type')||'13';
+        const them     = p.get('thematicId')||p.get('thematicid');
+        fetchAndRenderFirst(type, them,{
           mode, priceVal, stockVal,
           current:1, total:1, success:0, attempt:0
         });
@@ -421,7 +428,7 @@
   }
 
   function produceDrawer(){
-    const path = location.pathname;
+    const path     = location.pathname;
     const isList   = /^\/activity\/marketing-activity\/?$/.test(path);
     const isDetail = path.includes('/detail-new');
     if(!isList && !isDetail){
