@@ -226,66 +226,94 @@
     document.body.appendChild(btn);
   }
 
-  function submitEnrollment() {
-    const sel = document.querySelector('input[name="activity"]:checked');
-    if(!sel) return alert('请先通过抽屉选择活动');
-    const type = sel.dataset.type, them = sel.dataset.thematicid;
-
-    // 收集所有满足条件的商品
-    const rows = document.querySelectorAll('#product-rows tr');
-    const allItems = [];
-    rows.forEach(tr => {
-      const meet = tr.children[4].innerText.trim();
-      if(meet === '是') {
-        const pid   = Number(tr.dataset.productId);
-        const [skcLine, extLine] = tr.children[1].innerText.split('\n');
-        const skcId = Number(skcLine);
-        const skuId = Number(extLine.split(':')[1]);
-        const price = Math.round(parseFloat(tr.children[3].innerText.slice(1)) * 100);
-        const stock = Number(document.getElementById('moduled-stock-input').value) || Number(tr.children[5].innerText);
-        const sessionIds = window.__moduled_sessionIds__ || [];
-        allItems.push({ productId:pid, skcId, skuId, activityPrice:price, stockVal:stock, siteId:100, sessionIds });
-      }
-    });
-
-    if(!allItems.length) {
-      console.log('🛑 无满足条件商品，退出', allItems);
-      return alert('无满足条件商品可提交');
+function submitEnrollment() {
+  // 1. 先尝试从抽屉里取 radio
+  let sel = document.querySelector('input[name="activity"]:checked');
+  let type, them;
+  if (sel) {
+    type = sel.dataset.type;
+    them = sel.dataset.thematicid;
+  } else {
+    // 2. 抽屉里没选，那就从 URL 上取
+    const params = new URLSearchParams(location.search);
+    type = params.get('type') || params.get('activityType') || '13';
+    them = params.get('thematicId') || params.get('thematicid');
+    if (!them) {
+      return alert('请先通过抽屉选择活动或打开正确的活动详情页');
     }
-    // 打印所有满足条件商品列表
-    console.log('🆗 所有满足报名条件商品列表:', allItems);
-
-    // 测试模式：仅提交首条
-    const firstItem = allItems[0];
-    console.log('🔨 测试模式：仅提交首条:', firstItem);
-    if(!confirm(`即将测试提交首条商品报名：productId=${firstItem.productId}，确认？`)) {
-      console.log('👀 用户取消测试提交');
-      return;
-    }
-
-    // 构建并提交 payload（首条测试）
-    const payload = buildPayload(type, them, [ firstItem ]);
-    console.log('📤 报名 Payload (首条测试):', payload);
-    GM_xmlhttpRequest({
-      method:'POST',
-      url:'https://seller.kuajingmaihuo.com/marvel-mms/cn/api/kiana/gambit/marketing/enroll/semi/submit',
-      headers:{ 'Content-Type':'application/json','anti-content':ANTI_CONTENT,'mallid':MALLID },
-      data:JSON.stringify(payload),
-      onload(res) {
-        const d = JSON.parse(res.responseText);
-        if(d.success) {
-          alert('✅ 首条测试报名成功，刷新校验中...');
-          validateEnrollment(type, them);
-        } else {
-          alert('❌ 测试报名失败：' + d.errorMsg);
-        }
-      },
-      onerror(err) {
-        console.error('❌ 请求异常：', err);
-        alert('❌ 网络请求失败');
-      }
-    });
+    console.log('ℹ️ 详情页模式，自动读取 type, thematicId:', type, them);
   }
+
+  // 3. 收集所有满足条件的商品
+  const rows = document.querySelectorAll('#product-rows tr');
+  const allItems = [];
+  rows.forEach(tr => {
+    const meet = tr.children[4].innerText.trim();
+    if (meet === '是') {
+      const pidLine = tr.dataset.productId;
+      const [skcLine, extLine] = tr.children[1].innerText.split('\n');
+      const skcId = Number(skcLine);
+      const skuId = Number(extLine.split(':')[1]);
+      const price = Math.round(parseFloat(tr.children[3].innerText.slice(1)) * 100);
+      const stock = Number(document.getElementById('moduled-stock-input').value) 
+                    || Number(tr.children[5].innerText);
+      const sessionIds = window.__moduled_sessionIds__ || [];
+      allItems.push({
+        productId: Number(pidLine),
+        skcId,
+        skuId,
+        activityPrice: price,
+        stockVal: stock,
+        siteId: 100,
+        sessionIds
+      });
+    }
+  });
+
+  if (!allItems.length) {
+    console.log('🛑 无满足条件商品，退出', allItems);
+    return alert('无满足条件商品可提交');
+  }
+
+  // 4. 打印所有满足商品
+  console.log('🆗 所有满足报名条件商品列表:', allItems);
+
+  // 5. 测试模式：仅提交首条
+  const firstItem = allItems[0];
+  console.log('🔨 测试模式：仅提交首条:', firstItem);
+  if (!confirm(`即将测试提交首条商品报名：productId=${firstItem.productId}，确认？`)) {
+    console.log('👀 用户取消测试提交');
+    return;
+  }
+
+  // 6. 构建并提交 payload（仅首条测试）
+  const payload = buildPayload(type, them, [ firstItem ]);
+  console.log('📤 报名 Payload (首条测试):', payload);
+  GM_xmlhttpRequest({
+    method: 'POST',
+    url: 'https://seller.kuajingmaihuo.com/marvel-mms/cn/api/kiana/gambit/marketing/enroll/semi/submit',
+    headers: {
+      'Content-Type': 'application/json',
+      'anti-content': ANTI_CONTENT,
+      'mallid': MALLID
+    },
+    data: JSON.stringify(payload),
+    onload(res) {
+      const d = JSON.parse(res.responseText);
+      if (d.success) {
+        alert('✅ 首条测试报名成功，刷新校验中...');
+        validateEnrollment(type, them);
+      } else {
+        alert('❌ 测试报名失败：' + d.errorMsg);
+      }
+    },
+    onerror(err) {
+      console.error('❌ 请求异常：', err);
+      alert('❌ 网络请求失败');
+    }
+  });
+}
+
 
   function validateEnrollment(type, them) {
     GM_xmlhttpRequest({
