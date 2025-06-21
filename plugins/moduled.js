@@ -11,63 +11,23 @@
 (function() {
   'use strict';
 
+  const MALLID = '634418223153529';
+  const ANTI_CONTENT = '0aqAfoixYySYj9E2J0didyxgjRAwIqP2ID3kKGzdvqe84kyjIs4HyQfYOmjkrrze-crCiTnixgSUJIf0UKVZgmvQ75Eo_Bl6DEfLU9TF9-475E8cqUGNjYTATLJVJJqWySNB6kUA-xv1ltrWo4j80KfDIeHrC4H_5ekuK9QxQhAxvj9Q_P7hDAT4RTMrofxM5qYQUWAPzhC0WP-cTojUGQUfhZBM448owrxCtZ01vN9jxWjo087lM5hcCnRcBL02IflDP6slH4jZfiC0WUuiDbCQaXnHP7N_2x4t8H9RY2Xbs7UzRP17UlcguQbXRT1XElhr0AuaDJRDMSn88Ai5HNunGj2yyqMNtAcvWouNUwqAud9jnG__Z_Exp1l7pVnYYSB-Ub2L5IXRayS5QKvxL9vyu6BntuXBYSR2a8nqQ5RwjMStfIcXj6a5sljEe5FpqKek4ZlKK3GVq-2gw-2b_dcP0s_PPp3DKJuLtomM_QrzMFzESn2Ues4L4ZfSSRvdfXpV90GmEsbKvnlyvbJdmKkAmwpH-GzctDI4Z8bBkSO1eFK1yZCGZTSFhgq6wTtag96vwP0rvpgOMzEVgnwqkgs7hGqPOdzrdhgqKRZu4Y61vLS31aj1ZcDOoaPHL52nPmkd4bKAA8W_LvnOSy28dLdpDOIj2afFRvTt51-fsn-_ICH1KfzO0ZR-szvBDmKjJB_QffwpggAygXKvEYnFkTP5gWr28VB64SU3lrVVNArqnrc6ZrDgYcQYVAqQz1JXvLXeXGVaRTGqi8K1eWqLiVWK0ronxlyU2gJ'; // 替换为实际 anti-content
+
   // —— 样式 ——
   GM_addStyle(`
-    #moduled-drawer {
-      position: fixed; top: 0; right: 0;
-      width: 780px; height: 100%; background: #fff;
-      border-left: 1px solid #ccc; z-index: 999999;
-      overflow-y: auto; font-family: Arial, sans-serif;
-      box-shadow: -2px 0 8px rgba(0,0,0,0.2);
-    }
-    #moduled-drawer h2 {
-      font-size: 18px; padding: 16px; margin: 0;
-      border-bottom: 1px solid #eee;
-      background: #fafafa;
-    }
-    #moduled-close {
-      position: absolute; top: 12px; right: 12px;
-      cursor: pointer; font-size: 16px;
-    }
-    .moduled-section { padding: 16px; border-bottom: 1px solid #eee; }
-    .moduled-input-group { margin-bottom: 12px; }
-    .moduled-input-group label {
-      display: block; font-size: 14px; margin-bottom: 4px;
-    }
-    .moduled-input-group input,
-    .moduled-input-group select {
-      width: 100%; padding: 8px; font-size: 14px;
-      border: 1px solid #ccc; border-radius: 4px;
-    }
-    #moduled-submit,
-    #moduled-pause {
-      padding: 8px 16px; font-size: 14px;
-      border:none; background:#007bff; color:#fff;
-      border-radius:4px; cursor:pointer;
-    }
-    table {
-      width:100%; border-collapse:collapse; margin-top:8px;
-      table-layout: fixed;
-    }
-    th, td {
-      padding:8px; border:1px solid #ddd; vertical-align:top;
-      word-wrap: break-word;
-    }
-    th {
-      background:#f5f5f5; font-weight:500; text-align:left;
-    }
-    .product-cell { display:flex; align-items:flex-start; }
-    .product-cell img {
-      width:60px; height:60px; object-fit:cover;
-      margin-right:8px; border:1px solid #eee; border-radius:4px;
-    }
-    .product-cell .title {
-      flex:1; font-size:14px; line-height:1.4;
-      overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
-    }
+    #moduled-drawer { position:fixed; top:0; right:0; width:780px; height:100%; background:#fff;
+      border-left:1px solid #ccc; z-index:999999; overflow-y:auto; font-family:Arial;
+      box-shadow:-2px 0 8px rgba(0,0,0,0.2); }
+    #moduled-drawer h2 { font-size:18px; padding:16px; margin:0; border-bottom:1px solid #eee; }
+    #moduled-close { position:absolute; top:10px; right:10px; cursor:pointer; }
+    .moduled-section { padding:16px; border-bottom:1px solid #eee; }
+    #auto-submit-btn { position:fixed; top:100px; right:30px; padding:10px 14px;
+      background:#28a745; color:#fff; border:none; border-radius:6px;
+      font-weight:bold; cursor:pointer; z-index:1000000; }
   `);
 
-  // —— React Fiber Props 工具 ——
+  // —— React Props 工具 ——
   function getReactProps(dom) {
     for (const k in dom) {
       if (k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$')) {
@@ -77,6 +37,7 @@
     }
     return {};
   }
+
 
   // —— 渲染“报名详情”视图 ——
   function renderSubmitPage(config) {
@@ -240,6 +201,102 @@
         fetchAndRenderFirst(type, them, {mode,priceVal,stockVal,current:1,total:1,success:0,attempt:0});
       };
     }
+    createAutoSubmitButton();
+  }
+
+    function createAutoSubmitButton() {
+    // 若已存在则移除
+    const old = document.getElementById('auto-submit-btn');
+    if (old) old.remove();
+    const btn = document.createElement('button');
+    btn.id = 'auto-submit-btn';
+    btn.innerText = '🧠 自动提交报名';
+    btn.onclick = submitEnrollment;
+    document.body.appendChild(btn);
+  }
+  function buildPayload(type, thematicId, productList) {
+    return {
+      activityType: Number(type),
+      activityThematicId: Number(thematicId),
+      productList: productList.map(item => ({
+        productId: item.productId,
+        activityStock: item.stockVal,
+        sessionIds: item.sessionIds,
+        siteInfoList: [ {
+          siteId: item.siteId,
+          skcList: [ {
+            skcId: item.skcId,
+            skuList: [ {
+              skuId: item.skuId,
+              activityPrice: item.activityPrice // 分
+            } ]
+          } ]
+        } ]
+      }))
+    };
+  }
+
+  // —— 自动提交报名 主逻辑 ——
+  function submitEnrollment() {
+    // 从页面缓存或全局变量获取当前 detail 设置
+    const selRadio = document.querySelector('input[name="activity"]:checked');
+    if (!selRadio) return alert('请先通过抽屉选择活动');
+    const type = selRadio.dataset.type;
+    const them = selRadio.dataset.thematicid;
+    // 构造 productList: 仅包含满足条件的行
+    const rows = document.querySelectorAll('#product-rows tr');
+    const productList = [];
+    rows.forEach(tr => {
+      const meet = tr.children[4].innerText.trim();
+      if (meet === '是') {
+        const skuId = Number(tr.children[1].innerText.split('\n')[1].split(':')[1]);
+        const skcId = Number(tr.children[1].innerText.split('\n')[0]);
+        const productId = Number(tr.dataset.productId);
+        const activityPrice = Math.round(parseFloat(tr.children[3].innerText.slice(1)) * 100);
+        const stockVal = Number(document.getElementById('moduled-stock-input').value) || Number(tr.children[5].innerText);
+        // sessionIds 从全局缓存填充（首次渲染时必须缓存）
+        const sessionIds = window.__moduled_sessionIds__ || [];
+        // siteId 固定 100
+        productList.push({ productId, stockVal, sessionIds, siteId:100, skcId, skuId, activityPrice });
+      }
+    });
+    if (!productList.length) return alert('无满足条件商品可提交');
+
+    const payload = buildPayload(type, them, productList);
+    console.log('📤 报名 Payload:', payload);
+
+    // 提交报名
+    GM_xmlhttpRequest({
+      method:'POST',
+      url:'https://seller.kuajingmaihuo.com/marvel-mms/cn/api/kiana/gambit/marketing/enroll/semi/submit',
+      headers:{'Content-Type':'application/json','anti-content':ANTI_CONTENT,'mallid':MALLID},
+      data:JSON.stringify(payload),
+      onload(res) {
+        const d = JSON.parse(res.responseText);
+        if (d.success) {
+          alert('✅ 报名成功，刷新校验中...');
+          // 刷新校验接口
+          validateEnrollment(type, them);
+        } else {
+          alert('❌ 报名失败：' + d.errorMsg);
+        }
+      }
+    });
+  }
+
+  // —— 刷新校验 ——
+  function validateEnrollment(type, them) {
+    GM_xmlhttpRequest({
+      method:'POST',
+      url:'https://seller.kuajingmaihuo.com/marvel-mms/cn/api/kiana/gambit/marketing/enroll/activity/detail',
+      headers:{'Content-Type':'application/json','anti-content':ANTI_CONTENT,'mallid':MALLID},
+      data:JSON.stringify({ activityType:Number(type), activityThematicId:Number(them) }),
+      onload(res) {
+        const det = JSON.parse(res.responseText);
+        console.log('📋 校验结果:', det);
+        alert('✅ 报名已完成并已刷新价格');
+      }
+    });
   }
 
   // —— 入口 ——
