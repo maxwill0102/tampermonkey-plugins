@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         活动报名插件 V4.8.8（保V4.8.6 UI + 自动提交报名）
+// @name         活动报名插件 V4.8.9（测试模式：打印+首条提交）
 // @namespace    https://yourdomain.com
-// @version      4.8.8
-// @description  美化界面、标题截断、自动提交报名并刷新校验，兼容列表页/详情页抽屉逻辑
+// @version      4.8.9
+// @description  美化界面、标题截断、自动提交报名并刷新校验，兼容列表页/详情页抽屉逻辑，提交前打印所有满足条件商品并仅测试首条提交。
 // @match        https://agentseller.temu.com/activity/marketing-activity*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
@@ -230,37 +230,59 @@
     const sel = document.querySelector('input[name="activity"]:checked');
     if(!sel) return alert('请先通过抽屉选择活动');
     const type = sel.dataset.type, them = sel.dataset.thematicid;
+
+    // 收集所有满足条件的商品
     const rows = document.querySelectorAll('#product-rows tr');
-    const list = [];
-    rows.forEach(tr=>{
+    const allItems = [];
+    rows.forEach(tr => {
       const meet = tr.children[4].innerText.trim();
-      if(meet==='是'){
+      if(meet === '是') {
         const pid   = Number(tr.dataset.productId);
-        const skc   = Number(tr.children[1].innerText.split('\n')[0]);
-        const skuId = Number(tr.children[1].innerText.split('\n')[1].split(':')[1]);
-        const price = Math.round(parseFloat(tr.children[3].innerText.slice(1))*100);
-        const stock = Number(document.getElementById('moduled-stock-input').value) ||
-                      Number(tr.children[5].innerText);
-        const sessionIds = window.__moduled_sessionIds__||[];
-        list.push({ productId:pid, skcId:skc, skuId, activityPrice:price, stockVal:stock, siteId:100, sessionIds });
+        const [skcLine, extLine] = tr.children[1].innerText.split('\n');
+        const skcId = Number(skcLine);
+        const skuId = Number(extLine.split(':')[1]);
+        const price = Math.round(parseFloat(tr.children[3].innerText.slice(1)) * 100);
+        const stock = Number(document.getElementById('moduled-stock-input').value) || Number(tr.children[5].innerText);
+        const sessionIds = window.__moduled_sessionIds__ || [];
+        allItems.push({ productId:pid, skcId, skuId, activityPrice:price, stockVal:stock, siteId:100, sessionIds });
       }
     });
-    if(!list.length) return alert('无满足条件商品可提交');
-    const payload = buildPayload(type, them, list);
-    console.log('📤 报名 Payload:', payload);
+
+    if(!allItems.length) {
+      console.log('🛑 无满足条件商品，退出', allItems);
+      return alert('无满足条件商品可提交');
+    }
+    // 打印所有满足条件商品列表
+    console.log('🆗 所有满足报名条件商品列表:', allItems);
+
+    // 测试模式：仅提交首条
+    const firstItem = allItems[0];
+    console.log('🔨 测试模式：仅提交首条:', firstItem);
+    if(!confirm(`即将测试提交首条商品报名：productId=${firstItem.productId}，确认？`)) {
+      console.log('👀 用户取消测试提交');
+      return;
+    }
+
+    // 构建并提交 payload（首条测试）
+    const payload = buildPayload(type, them, [ firstItem ]);
+    console.log('📤 报名 Payload (首条测试):', payload);
     GM_xmlhttpRequest({
       method:'POST',
       url:'https://seller.kuajingmaihuo.com/marvel-mms/cn/api/kiana/gambit/marketing/enroll/semi/submit',
       headers:{ 'Content-Type':'application/json','anti-content':ANTI_CONTENT,'mallid':MALLID },
       data:JSON.stringify(payload),
-      onload(res){
+      onload(res) {
         const d = JSON.parse(res.responseText);
-        if(d.success){
-          alert('✅ 报名成功，刷新校验中...');
-          validateEnrollment(type,them);
+        if(d.success) {
+          alert('✅ 首条测试报名成功，刷新校验中...');
+          validateEnrollment(type, them);
         } else {
-          alert('❌ 报名失败：'+d.errorMsg);
+          alert('❌ 测试报名失败：' + d.errorMsg);
         }
+      },
+      onerror(err) {
+        console.error('❌ 请求异常：', err);
+        alert('❌ 网络请求失败');
       }
     });
   }
@@ -271,8 +293,8 @@
       url:'https://seller.kuajingmaihuo.com/marvel-mms/cn/api/kiana/gambit/marketing/enroll/activity/detail',
       headers:{ 'Content-Type':'application/json','anti-content':ANTI_CONTENT,'mallid':MALLID },
       data:JSON.stringify({ activityType:Number(type), activityThematicId:Number(them) }),
-      onload(res){
-        console.log('📋 校验结果：',JSON.parse(res.responseText));
+      onload(res) {
+        console.log('📋 校验结果：', JSON.parse(res.responseText));
         alert('✅ 报名已完成并刷新价格');
       }
     });
@@ -286,12 +308,15 @@
     document.querySelectorAll('.act-item_actItem__x2Uci').forEach((el,idx)=>{
       const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText.trim()||'';
       const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText.trim()||'';
-      let type='',them='';
-      try{ const btn=el.querySelector('a[data-testid="beast-core-button-link"]'); ({activityType:type,activityThematicId:them}=getReactProps(btn)); }catch{}
+      let type='', themVal='';
+      try {
+        const btn = el.querySelector('a[data-testid="beast-core-button-link"]');
+        ({activityType:type, activityThematicId:themVal} = getReactProps(btn));
+      } catch {}
       longCon.innerHTML += `
         <div class="moduled-table-row">
           <div>${name}</div><div>${desc}</div>
-          <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${them}" /></div>
+          <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${themVal}" /></div>
         </div>`;
     });
   }
@@ -305,12 +330,15 @@
       panels[i].innerHTML = '<div class="moduled-table-header"><div>主题</div><div>报名时间</div><div>活动时间</div><div>已报名</div><div>选择</div></div>';
       document.querySelectorAll('[data-testid="beast-core-table-body-tr"]').forEach(row=>{
         const txt=row.querySelector('[data-testid="beast-core-table-td"]')?.innerText.trim()||'';
-        let type='',them='';
-        try{ const btn=row.querySelector('a[data-testid="beast-core-button-link"]'); ({activityType:type,activityThematicId:them}=getReactProps(btn)); }catch{}
+        let type='', themVal='';
+        try {
+          const btn = row.querySelector('a[data-testid="beast-core-button-link"]');
+          ({activityType:type, activityThematicId:themVal} = getReactProps(btn));
+        } catch {}
         panels[i].innerHTML += `
           <div class="moduled-table-row">
             <div>${txt}</div><div>–</div><div>–</div><div>–</div>
-            <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${them}" /></div>
+            <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${themVal}" /></div>
           </div>`;
       });
     }
@@ -320,7 +348,7 @@
     document.getElementById('moduled-drawer')?.remove();
     const d=document.createElement('div'); d.id='moduled-drawer';
     let html=`
-      <h2>活动报名 V4.8.8 <span id="moduled-close">❌</span></h2>
+      <h2>活动报名 V4.8.9 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group">
           <label>价格设置方式</label>
