@@ -161,7 +161,11 @@
     document.body.appendChild(d);
 
     // 关闭按钮
-    d.querySelector('#moduled-close').onclick = () => window.__moduled_plugin__();
+    d.querySelector('#moduled-close').onclick = () => {
+      const drawer = document.getElementById('moduled-drawer');
+      if (drawer) drawer.remove();
+  };
+
 
     // 切换价格模式文字
     d.querySelector('#moduled-price-mode').onchange = function() {
