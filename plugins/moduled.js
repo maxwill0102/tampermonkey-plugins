@@ -76,9 +76,37 @@
   }
 
   // 根据抓取结果填充表格
+    // 根据抓取结果填充表格，展示所有首批商品
   function fillFirstProduct(data, config) {
-    const row = data[0];
-    const siteInfo = row.activitySiteInfoList[0] || {};
+    const tbody = document.getElementById('product-rows');
+    tbody.innerHTML = '';
+    data.forEach(item => {
+      const siteInfo = item.activitySiteInfoList[0] || {};
+      const skcInfo  = siteInfo.skcList[0] || {};
+      const sku      = skcInfo.skuList[0] || {};
+      const title    = item.productName || '';
+      const skcId    = skcInfo.skcId || '';
+      const extCode  = sku.extCode || '';
+      const dailyVal= sku.dailyPrice != null ? (sku.dailyPrice/100).toFixed(2) : '';
+      const sugVal  = sku.suggestActivityPrice != null ? (sku.suggestActivityPrice/100).toFixed(2) : '';
+      // 比较除100后的建议价与用户设置价
+      const meet    = (sku.suggestActivityPrice/100) >= config.priceVal ? '是' : '否';
+      // 根据是否满足条件决定库存显示
+      const stock   = meet === '是' ? (config.stockVal || item.suggestActivityStock) : '';
+      const success = config.successMap && config.successMap[item.productId] ? '成功' : '';
+
+      tbody.innerHTML += `
+        <tr>
+          <td>${title}</td>
+          <td>${skcId}<br>货号:${extCode}</td>
+          <td>¥${dailyVal}</td>
+          <td>¥${sugVal}</td>
+          <td>${meet}</td>
+          <td>${stock}</td>
+          <td>${success}</td>
+        </tr>`;
+    });
+  };
     const skcInfo = siteInfo.skcList[0] || {};
     const sku = skcInfo.skuList[0] || {};
     const title = row.productName || '';
@@ -108,7 +136,7 @@
     GM_xmlhttpRequest({
       method:'POST',
       url:'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/scroll/match',
-      headers:{'Content-Type':'application/json','mallid':'634418223153529','anti-content':'0aqAfoixYySYj9E2J0didyxgjRAwIqP2ID3kKGzdvqe84kyjIs4HyQfYOmjkrrze-crCiTnixgSUJIf0UKVZgmvQ75Eo_Bl6DEfLU9TF9-475E8cqUGNjYTATLJVJJqWySNB6kUA-xv1ltrWo4j80KfDIeHrC4H_5ekuK9QxQhAxvj9Q_P7hDAT4RTMrofxM5qYQUWAPzhC0WP-cTojUGQUfhZBM448owrxCtZ01vN9jxWjo087lM5hcCnRcBL02IflDP6slH4jZfiC0WUuiDbCQaXnHP7N_2x4t8H9RY2Xbs7UzRP17UlcguQbXRT1XElhr0AuaDJRDMSn88Ai5HNunGj2yyqMNtAcvWouNUwqAud9jnG__Z_Exp1l7pVnYYSB-Ub2L5IXRayS5QKvxL9vyu6BntuXBYSR2a8nqQ5RwjMStfIcXj6a5sljEe5FpqKek4ZlKK3GVq-2gw-2b_dcP0s_PPp3DKJuLtomM_QrzMFzESn2Ues4L4ZfSSRvdfXpV90GmEsbKvnlyvbJdmKkAmwpH-GzctDI4Z8bBkSO1eFK1yZCGZTSFhgq6wTtag96vwP0rvpgOMzEVgnwqkgs7hGqPOdzrdhgqKRZu4Y61vLS31aj1ZcDOoaPHL52nPmkd4bKAA8W_LvnOSy28dLdpDOIj2afFRvTt51-fsn-_ICH1KfzO0ZR-szvBDmKjJB_QffwpggAygXKvEYnFkTP5gWr28VB64SU3lrVVNArqnrc6ZrDgYcQYVAqQz1JXvLXeXGVaRTGqi8K1eWqLiVWK0ronxlyU2gJ','referer':location.href,'origin':location.origin,'cookie':document.cookie,'user-agent':navigator.userAgent},
+      headers:{'Content-Type':'application/json','mallid':'634418223153529','anti-content':'<anti>','referer':location.href,'origin':location.origin,'cookie':document.cookie,'user-agent':navigator.userAgent},
       data:JSON.stringify({activityType:Number(type),activityThematicId:Number(thematicId),rowCount:50,addSite:true,searchScrollContext:''}),
       onload(res){ try{
         const d=JSON.parse(res.responseText);
