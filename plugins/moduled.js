@@ -244,18 +244,28 @@
   }
 
   // —— 列队处理 —— 
-  function processQueue(type, them) {
-    if(window.__moduled_paused__) return;
-    const it = window.__moduled_queue__.shift();
-    if(!it) {
-      updatePauseBtn();
-      return;
-    }
-    submitSingle(type, them, it)
-      .then(()=> processQueue(type, them))
-      .catch(()=> processQueue(type, them));
+function processQueue(type, them) {
+  if (window.__moduled_paused__) return;
+
+  const item = window.__moduled_queue__.shift();
+  if (!item) {
+    // 队列空时，把暂停按钮变成关闭（或隐藏）
+    const btn = document.getElementById('moduled-pause');
+    btn.innerText = '关闭';
+    btn.onclick = () => document.getElementById('moduled-drawer').remove();
+    return;
   }
 
+  submitSingle(type, them, item)
+    .then(() => {
+      const delay = 800 + Math.floor(Math.random() * 400);
+      setTimeout(() => processQueue(type, them), delay);
+    })
+    .catch(() => {
+      const delay = 800 + Math.floor(Math.random() * 400);
+      setTimeout(() => processQueue(type, them), delay);
+    });
+}
   // —— 提交单条 —— 
   function submitSingle(type, them, it) {
     const payload = {
@@ -274,43 +284,44 @@
         }]
       }]
     };
-    return new Promise((resolve, reject) => {
-      GM_xmlhttpRequest({
-        method:'POST',
-        url:'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/submit',
-        headers:{ 'Content-Type':'application/json','mallid':MALLID },
-        data:JSON.stringify(payload),
-        onload(res){
-          const d = JSON.parse(res.responseText);
-          console.log('◀️ Response:', d);
-          const rows = document.querySelectorAll('#product-rows tr');
-          const row  = rows[rows.length - window.__moduled_queue__.length - 1];
-          if(d.success) {
-            row && (row.querySelector('.status').innerText = '✅');
-          } else {
-            row && (row.querySelector('.status').innerText = '❌');
-          }
+     return new Promise((resolve, reject) => {
+    GM_xmlhttpRequest({
+      method: 'POST',
+      url: 'https://agentseller.temu.com/api/kiana/gamblers/marketing/enroll/semi/submit',
+      headers: { 'Content-Type': 'application/json', 'mallid': MALLID },
+      data: JSON.stringify(payload),
+      onload(res) {
+        const d = JSON.parse(res.responseText);
+        const rows = document.querySelectorAll('#product-rows tr');
+        const rowIndex = /* 计算当前行 */;
+        const row = rows[rowIndex];
+        if (d.success) {
+          row && (row.querySelector('.status').innerText = '✅');
           resolve();
-        },
-        onerror(err){
-          reject(err);
+        } else {
+          row && (row.querySelector('.status').innerText = '❌');
+          resolve();  // 失败也继续下一个
         }
+      },
+      onerror(err) {
+        reject(err);
+      }
       });
     });
     console.log('▶️ Submitting single payload:', JSON.stringify(payload));
   }
 
   // —— 切换 暂停 / 继续 / 关闭 —— 
-  function togglePause() {
-    window.__moduled_paused__ = !window.__moduled_paused__;
-    updatePauseBtn();
-    if(!window.__moduled_paused__) {
-      const sel  = document.querySelector('input[name="activity"]:checked');
-      const type = sel? +sel.dataset.type : +new URLSearchParams(location.search).get('type');
-      const them = sel? +sel.dataset.thematicid : +new URLSearchParams(location.search).get('thematicId');
-      processQueue(type, them);
-    }
+function togglePause() {
+  window.__moduled_paused__ = !window.__moduled_paused__;
+  updatePauseBtn();
+  if (!window.__moduled_paused__) {
+    const sel  = document.querySelector('input[name="activity"]:checked');
+    const type = sel ? +sel.dataset.type : +new URLSearchParams(location.search).get('type');
+    const them = sel ? +sel.dataset.thematicid : +new URLSearchParams(location.search).get('thematicId');
+    processQueue(type, them);  // 恢复时启动处理
   }
+}
 
   function updatePauseBtn() {
     const b = document.getElementById('moduled-pause');
