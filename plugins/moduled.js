@@ -294,6 +294,7 @@
         data: JSON.stringify(payload),
         onload(res){
           const d = JSON.parse(res.responseText);
+          console.log('◀️ 返回：', d);
           // 更新表格行状态
           const rows = document.querySelectorAll('#product-rows tr');
           const idx  = rows.length - 1 - window.__moduled_queue__.length;
@@ -310,6 +311,7 @@
         }
       });
     });
+    console.log('▶️ 正在提交：', JSON.stringify(payload));
   }
 
   // —— 切换 暂停 / 继续 —— 
