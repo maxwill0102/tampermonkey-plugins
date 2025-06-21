@@ -189,21 +189,24 @@
       html += `
         <div class="moduled-section"><strong>长期活动</strong><div id="moduled-long"></div></div>
        <div class="moduled-section"><strong>短期活动</strong>
-        <div class="moduled-short-table-wrapper">
-          <table class="moduled-short-table">
-            <thead>
-             <tr>
-              <th class="select-col">选择</th>
-              <th>主题</th>
-              <th>报名时间</th>
-              <th>活动时间</th>
-              <th>已报名</th>
-            </tr>
-          </thead>
-          <tbody id="moduled-short-body"></tbody>
-        </table>
-      </div>
-    </div>`;
++      <!-- 直接引用页面上第二组 Tab -->
++      <div id="moduled-short-tabs-container"></div>
++      <!-- 我们自己的内容区：表格 -->
++      <div class="moduled-short-table-wrapper">
++        <table class="moduled-short-table">
++          <thead>
++            <tr>
++              <th>主题</th>
++              <th>报名时间</th>
++              <th>活动时间</th>
++              <th>已报名</th>
++              <th class="select-col">选择</th>   <!-- 放到最后一列 -->
++            </tr>
++          </thead>
++          <tbody id="moduled-short-body"></tbody>
++        </table>
++      </div>
++     </div>`;
     }
 
     // “立即报名”按钮
@@ -214,6 +217,14 @@
 
     d.innerHTML = html;
     document.body.appendChild(d);
+    // 抽屉渲染完毕后，克隆页面上第二个 TAB_outerWrapper_5-118-0
+const allTabs = document.querySelectorAll('.TAB_outerWrapper_5-118-0');
+if (allTabs.length >= 2) {
+  const clone = allTabs[1].cloneNode(true);
+  clone.style.marginTop = '8px';
+  document.getElementById('moduled-short-tabs-container').appendChild(clone);
+}
+
 
     // 关闭按钮
     d.querySelector('#moduled-close').onclick = () => {
@@ -556,44 +567,45 @@ function fetchActivityData() {
 
 
   /*** —— 拉取列表页短期活动 —— ***/
-  async function fetchShortTermActivities() {
+ async function fetchShortTermActivities() {
   const tbody = document.getElementById('moduled-short-body');
   if (!tbody) return;
-  tbody.innerHTML = '';  // 先清空
+  tbody.innerHTML = '';         // 清空上一批
 
-  // 找到短期活动列表容器
-  const roots = document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
-  if (roots.length<2) return;
-  const tabs = roots[1].querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+  // 拿到页面上第二组 tabs
+  const roots = document.querySelectorAll('.TAB_outerWrapper_5-118-0');
+  if (roots.length < 2) return;
+  const tabContent = roots[1].querySelector('.TAB_tabContentInnerContainer_5-118-0');
+  const items = tabContent.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
 
-  for (let i = 0; i < tabs.length; i++) {
-    tabs[i].click();
-    // 等待渲染
-    await new Promise(r => setTimeout(r, 400));
+  // 对每个 tab 依次点击，然后拉它下面的数据
+  for (let i = 0; i < items.length; i++) {
+    items[i].click();
+    await new Promise(r=>setTimeout(r, 400));
 
-    // 本页所有行
-    const rows = document.querySelectorAll('[data-testid="beast-core-table-body-tr"]');
-    rows.forEach(row => {
-      const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
-      if (cells.length < 5) return;
-      const [title, applyTime, actTime, joined] = Array.from(cells).slice(0,4).map(td=>td.innerText.trim());
-      // 拿到 type/thematicId
-      let type='', them='';
-      try {
-        const btn = row.querySelector('a[data-testid="beast-core-button-link"]');
-        ({activityType:type, activityThematicId:them} = getReactProps(btn));
-      } catch {}
-      tbody.innerHTML += `
-        <tr>
-          <td class="select-col">
-            <input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}" />
-          </td>
-          <td>${title}</td>
-          <td>${applyTime}</td>
-          <td>${actTime}</td>
-          <td>${joined}</td>
-        </tr>`;
-    });
+    document
+      .querySelectorAll('[data-testid="beast-core-table-body-tr"]')
+      .forEach(row => {
+        const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
+        if (cells.length < 5) return;
+        const [title, applyTime, actTime, joined] = Array.from(cells).slice(0,4).map(td=>td.innerText.trim());
+        let type='', them='';
+        try {
+          ({activityType:type, activityThematicId:them} =
+             getReactProps(row.querySelector('a[data-testid="beast-core-button-link"]')));
+        } catch {}
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr>
+            <td>${title}</td>
+            <td>${applyTime}</td>
+            <td>${actTime}</td>
+            <td>${joined}</td>
+            <td class="select-col">
+              <input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}" />
+            </td>
+          </tr>
+        `);
+      });
   }
 }
 
