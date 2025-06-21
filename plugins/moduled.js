@@ -1,3 +1,13 @@
+// ==UserScript==
+// @name         活动报名插件 V4.8.8（保V4.8.6 UI + 自动提交报名 + 暂停/继续/关闭）
+// @namespace    https://yourdomain.com
+// @version      4.8.8
+// @description  美化界面、标题截断、自动提交报名并刷新校验，兼容列表页/详情页抽屉逻辑，新增暂停/继续/关闭功能。
+// @match        https://agentseller.temu.com/activity/marketing-activity*
+// @grant        GM_addStyle
+// @grant        GM_xmlhttpRequest
+// ==/UserScript==
+
 (function() {
   'use strict';
 
@@ -8,8 +18,8 @@
   window.__moduled_queue__  = [];
   window.__moduled_paused__ = false;
 
-  // —— 样式（保留 V4.8.6 样式 + 暂停/继续） —— 
-   GM_addStyle(`
+  // —— 样式（保留 V4.8.6 样式 + 暂停/继续/关闭） —— 
+  GM_addStyle(`
     #moduled-drawer {
       position: fixed; top: 0; right: 0;
       width: 780px; height: 100%; background: #fff;
@@ -189,7 +199,6 @@
 
   // —— 点击“🧠 自动提交报名” 时 —— 
   function submitEnrollment() {
-    // 1) 获得活动 type/them
     let type, them;
     const sel = document.querySelector('input[name="activity"]:checked');
     if(sel) {
@@ -201,7 +210,6 @@
       if(!them) return alert('请先选择活动或打开详情页');
     }
 
-    // 2) 收集“是”的商品到队列
     const cfg  = window.__moduled_config__;
     const raws = window.__moduled_rawItems__||[];
     const queue = [];
@@ -211,7 +219,7 @@
         const raw  = raws[idx];
         const skc  = raw.activitySiteInfoList[0]?.skcList[0]||{};
         const sku  = skc.skuList[0]||{};
-        const price= Math.round((sku.suggestActivityPrice||0)/1); // 单位已是分
+        const price= Math.round((sku.suggestActivityPrice||0));
         const stock= cfg.stockVal?+cfg.stockVal:raw.suggestActivityStock;
         const sess = raw.suggestEnrollSessionIdList.length
                      ? raw.suggestEnrollSessionIdList
@@ -239,7 +247,6 @@
     if(window.__moduled_paused__) return;
     const it = window.__moduled_queue__.shift();
     if(!it) {
-      // 全部完成 → 切换成“关闭”
       updatePauseBtn();
       return;
     }
@@ -274,7 +281,6 @@
         data:JSON.stringify(payload),
         onload(res){
           const d = JSON.parse(res.responseText);
-          // 更新表格行状态
           const rows = document.querySelectorAll('#product-rows tr');
           const row  = rows[rows.length - window.__moduled_queue__.length - 1];
           if(d.success) {
@@ -296,7 +302,6 @@
     window.__moduled_paused__ = !window.__moduled_paused__;
     updatePauseBtn();
     if(!window.__moduled_paused__) {
-      // 继续执行
       const sel  = document.querySelector('input[name="activity"]:checked');
       const type = sel? +sel.dataset.type : +new URLSearchParams(location.search).get('type');
       const them = sel? +sel.dataset.thematicid : +new URLSearchParams(location.search).get('thematicId');
@@ -308,7 +313,6 @@
     const b = document.getElementById('moduled-pause');
     if(!b) return;
     if(!window.__moduled_queue__.length) {
-      // 队列空 → 关闭
       b.classList.remove('paused');
       b.innerText = '关闭';
       b.onclick = () => document.getElementById('moduled-drawer').remove();
@@ -322,9 +326,8 @@
     }
   }
 
-  // —— 列表/详情页 抽屉逻辑 —— 
+  // —— 列表/详情页 抽屉逻辑 & 活动抓取 —— 
 
-  // 拉取长期活动
   function fetchActivityData(){
     const longCon = document.getElementById('moduled-long');
     if(!longCon) return;
@@ -337,15 +340,14 @@
         const btn = el.querySelector('a[data-testid="beast-core-button-link"]');
         ({activityType:type, activityThematicId:themVal} = getReactProps(btn));
       } catch{}
-      longCon.innerHTML += 
+      longCon.innerHTML += `
         <div class="moduled-table-row">
           <div>${name}</div><div>${desc}</div>
           <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${themVal}" /></div>
-        </div>;
+        </div>`;
     });
   }
 
-  // 拉取短期活动
   async function fetchShortTermActivities(){
     const panels=[0,1,2].map(i=>document.getElementById('moduled-tab-'+i));
     const roots=document.querySelectorAll('.TAB_tabContentInnerContainer_5-118-0');
@@ -361,20 +363,19 @@
           const btn=row.querySelector('a[data-testid="beast-core-button-link"]');
           ({activityType:type, activityThematicId:themVal} = getReactProps(btn));
         } catch{}
-        panels[i].innerHTML += 
+        panels[i].innerHTML += `
           <div class="moduled-table-row">
             <div>${txt}</div><div>–</div><div>–</div><div>–</div>
             <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${themVal}" /></div>
-          </div>;
+          </div>`;
       });
     }
   }
 
-  // 创建抽屉
   function createDrawer(isDetail){
     document.getElementById('moduled-drawer')?.remove();
     const d=document.createElement('div'); d.id='moduled-drawer';
-    let html=
+    let html=`
       <h2>活动报名 V4.8.8 <span id="moduled-close">❌</span></h2>
       <div class="moduled-section" id="moduled-settings">
         <div class="moduled-input-group">
@@ -389,9 +390,9 @@
           <label>活动库存（选填）</label>
           <input type="number" id="moduled-stock-input" placeholder="默认" />
         </div>
-      </div>;
+      </div>`;
     if(!isDetail){
-      html+=
+      html+=`
       <div class="moduled-section"><strong>长期活动</strong><div id="moduled-long"></div></div>
       <div class="moduled-section"><strong>短期活动</strong>
         <div class="moduled-tabs">
@@ -404,9 +405,9 @@
           <div class="moduled-tab-panel" id="moduled-tab-1"></div>
           <div class="moduled-tab-panel" id="moduled-tab-2"></div>
         </div>
-      </div>;
+      </div>`;
     }
-    html+=<div class="moduled-section" style="text-align:center"><button id="moduled-submit">立即报名</button></div>;
+    html+=`<div class="moduled-section" style="text-align:center"><button id="moduled-submit">立即报名</button></div>`;
     d.innerHTML=html;
     document.body.appendChild(d);
     d.querySelector('#moduled-close').onclick = () => d.remove();
@@ -436,7 +437,6 @@
           mode, priceVal, stockVal,
           current:1, total:1, success:0, attempt:0
         });
-        // 插入自动提交按钮
         const btn = document.createElement('button');
         btn.id = 'auto-submit-btn';
         btn.innerText = '🧠 自动提交报名';
@@ -444,7 +444,7 @@
         document.body.appendChild(btn);
       };
     } else {
-      d.querySelector('#moduled-submit').onclick = ()=>{
+      d.querySelector('#moduled-submit').onclick = () => {
         const mode     = d.querySelector('#moduled-price-mode').value;
         const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
         if(!priceVal) return alert('请填写活动价格');
@@ -465,7 +465,7 @@
     }
   }
 
-  // 根据 URL 判断是列表还是详情
+  // —— 根据 URL 判断是列表还是详情 —— 
   function produceDrawer(){
     const p = location.pathname;
     const isList   = /^\/activity\/marketing-activity\/?$/.test(p);
@@ -477,4 +477,5 @@
   }
 
   window.__moduled_plugin__ = produceDrawer;
+
 })();
