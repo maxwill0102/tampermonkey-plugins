@@ -189,24 +189,24 @@
       html += `
         <div class="moduled-section"><strong>长期活动</strong><div id="moduled-long"></div></div>
        <div class="moduled-section"><strong>短期活动</strong>
-+      <!-- 直接引用页面上第二组 Tab -->
-+      <div id="moduled-short-tabs-container"></div>
-+      <!-- 我们自己的内容区：表格 -->
-+      <div class="moduled-short-table-wrapper">
-+        <table class="moduled-short-table">
-+          <thead>
-+            <tr>
-+              <th>主题</th>
-+              <th>报名时间</th>
-+              <th>活动时间</th>
-+              <th>已报名</th>
-+              <th class="select-col">选择</th>   <!-- 放到最后一列 -->
-+            </tr>
-+          </thead>
-+          <tbody id="moduled-short-body"></tbody>
-+        </table>
-+      </div>
-+     </div>`;
+       <!-- 直接引用页面上第二组 Tab -->
+       <div id="moduled-short-tabs-container"></div>
+       <!-- 我们自己的内容区：表格 -->
+       <div class="moduled-short-table-wrapper">
+         <table class="moduled-short-table">
+           <thead>
+             <tr>
+               <th>主题</th>
+               <th>报名时间</th>
+               <th>活动时间</th>
+               <th>已报名</th>
+               <th class="select-col">选择</th>   <!-- 放到最后一列 -->
+             </tr>
+           </thead>
+           <tbody id="moduled-short-body"></tbody>
+         </table>
+       </div>
+      </div>`;
     }
 
     // “立即报名”按钮
@@ -223,6 +223,32 @@ if (allTabs.length >= 2) {
   const clone = allTabs[1].cloneNode(true);
   clone.style.marginTop = '8px';
   document.getElementById('moduled-short-tabs-container').appendChild(clone);
+  // 拿到页面上第二组原生 Tabs
+const originalWrapper = document.querySelectorAll('.TAB_outerWrapper_5-118-0')[1];
+if (originalWrapper) {
+  // 克隆它的 DOM 结构
+  const clone = originalWrapper.cloneNode(true);
+  clone.style.marginTop = '8px';
+  const container = document.getElementById('moduled-short-tabs-container');
+  container.appendChild(clone);
+
+  // 拿到原来的 item 和 clone 后的 item
+  const origItems  = originalWrapper.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+  const cloneItems = clone       .querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+
+  // 给 clone 上的每个 tab 绑定点击时触发原生 tab 的 click
+  cloneItems.forEach((tabEl, idx) => {
+    tabEl.addEventListener('click', () => {
+      origItems[idx].click();
+      // 我们还要把 clone 上的 active 样式也同步一下
+      cloneItems.forEach(e => e.classList.remove('TAB_active_5-118-0'));
+      tabEl.classList.add('TAB_active_5-118-0');
+      // 并且把下面的表格数据清空或刷新
+      document.getElementById('moduled-short-body').innerHTML = '';
+    });
+  });
+}
+
 }
 
 
