@@ -223,7 +223,14 @@ if (allTabs.length >= 2) {
   const clone = allTabs[1].cloneNode(true);
   clone.style.marginTop = '8px';
   document.getElementById('moduled-short-tabs-container').appendChild(clone);
-
+  // 拿到页面上第二组原生 Tabs
+const originalWrapper = document.querySelectorAll('.TAB_outerWrapper_5-118-0')[1];
+if (originalWrapper) {
+  // 克隆它的 DOM 结构
+  const clone = originalWrapper.cloneNode(true);
+  clone.style.marginTop = '8px';
+  const container = document.getElementById('moduled-short-tabs-container');
+  container.appendChild(clone);
 
   // 拿到原来的 item 和 clone 后的 item
   const origItems  = originalWrapper.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
