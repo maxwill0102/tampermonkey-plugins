@@ -189,24 +189,24 @@
       html += `
         <div class="moduled-section"><strong>长期活动</strong><div id="moduled-long"></div></div>
        <div class="moduled-section"><strong>短期活动</strong>
-+      <!-- 直接引用页面上第二组 Tab -->
-+      <div id="moduled-short-tabs-container"></div>
-+      <!-- 我们自己的内容区：表格 -->
-+      <div class="moduled-short-table-wrapper">
-+        <table class="moduled-short-table">
-+          <thead>
-+            <tr>
-+              <th>主题</th>
-+              <th>报名时间</th>
-+              <th>活动时间</th>
-+              <th>已报名</th>
-+              <th class="select-col">选择</th>   <!-- 放到最后一列 -->
-+            </tr>
-+          </thead>
-+          <tbody id="moduled-short-body"></tbody>
-+        </table>
-+      </div>
-+     </div>`;
+       <!-- 直接引用页面上第二组 Tab -->
+       <div id="moduled-short-tabs-container"></div>
+       <!-- 我们自己的内容区：表格 -->
+       <div class="moduled-short-table-wrapper">
+         <table class="moduled-short-table">
+           <thead>
+             <tr>
+               <th>主题</th>
+               <th>报名时间</th>
+               <th>活动时间</th>
+               <th>已报名</th>
+               <th class="select-col">选择</th>   <!-- 放到最后一列 -->
+             </tr>
+           </thead>
+           <tbody id="moduled-short-body"></tbody>
+         </table>
+       </div>
+      </div>`;
     }
 
     // “立即报名”按钮
