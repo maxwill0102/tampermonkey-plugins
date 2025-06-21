@@ -265,7 +265,15 @@
           <tbody id="product-rows"></tbody>
         </table>
       </div>`;
-    d.querySelector('#moduled-close').onclick = () => window.__moduled_plugin__();
+  d.querySelector('#moduled-close').onclick = () => {
+  // 1. 先关闭当前“报名详情”抽屉，回到活动列表或详情页
+  window.__moduled_plugin__();
+  // 2. 同时把悬浮的按钮都清理掉
+  document.getElementById('auto-submit-btn')?.remove();
+  document.getElementById('moduled-pause')?.remove();
+};
+
+    
   }
 
   /*** —— 更新统计 —— ***/
