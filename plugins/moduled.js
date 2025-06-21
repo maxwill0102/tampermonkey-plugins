@@ -249,7 +249,47 @@ if (allTabs.length >= 2) {
         };
       });
       fetchActivityData();
-      fetchShortTermActivities();
+     // 在渲染完 #moduled-short-tabs-container 之后，动态克隆页面上第二组原生 Tabs，
+// 并为每个克隆出来的 tab 绑定“切换到对应面板、拉取对应数据”的事件。
+
+// 1. 把原生的第二组短期活动 Tab 拿出来
+const originalTabsWrapper = document.querySelectorAll('.TAB_outerWrapper_5-118-0')[1];
+if (originalTabsWrapper) {
+  // 2. 克隆整组 Tabs DOM
+  const cloneTabs = originalTabsWrapper.cloneNode(true);
+  cloneTabs.style.margin = '8px 0';
+  document.getElementById('moduled-short-tabs-container').appendChild(cloneTabs);
+
+  // 3. 拿到原生的 tab items 和 克隆后的 tab items
+  const origItems  = originalTabsWrapper.querySelectorAll('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+  const cloneItems = cloneTabs.querySelectorAll   ('[data-testid="beast-core-tab-itemLabel-wrapper"]');
+
+  // 4. 依次给克隆的 tab 绑定 click
+  cloneItems.forEach((tabEl, idx) => {
+    tabEl.style.cursor = 'pointer';
+    tabEl.addEventListener('click', async () => {
+      // —— 切换克隆版的高亮状态 —— 
+      cloneItems.forEach(e => e.classList.remove('TAB_active_5-118-0'));
+      tabEl.classList.add('TAB_active_5-118-0');
+
+      // —— 切换我们自己面板的显示 & 隐藏 —— 
+      document.querySelectorAll('#moduled-short-panels .moduled-tab-panel')
+              .forEach(p => p.classList.remove('active'));
+      document.getElementById(`moduled-tab-${idx}`).classList.add('active');
+
+      // —— 让原页面也切换（以便拿到正确的数据） —— 
+      origItems[idx].click();
+      await new Promise(r => setTimeout(r, 400));  // 等原生内容切换完成
+
+      // —— 拉这一组短期活动并渲染到对应 panel —— 
+      renderShortTermPanel(idx);
+    });
+  });
+
+  // 默认触发第一个 tab 的数据拉取
+  cloneItems[0].click();
+}
+
 
       d.querySelector('#moduled-submit').onclick = () => {
         const mode     = d.querySelector('#moduled-price-mode').value;
@@ -303,6 +343,48 @@ if (allTabs.length >= 2) {
       };
     }
   }
+
+  async function renderShortTermPanel(idx) {
+  const panel = document.getElementById(`moduled-tab-${idx}`);
+  // 1. 先清 header
+  panel.innerHTML = `
+    <div class="moduled-table-header">
+      <div>主题</div><div>报名时间</div><div>活动时间</div><div>已报名</div><div>选择</div>
+    </div>`;
+
+  // 2. 等原生页面渲染好当前 idx 的 table rows
+  await new Promise(r => setTimeout(r, 200));
+  const rows = document.querySelectorAll('[data-testid="beast-core-table-body-tr"]');
+
+  // 3. 按照 idx 过滤出属于这一页的行并渲染
+  rows.forEach((row, rowIdx) => {
+    // 取第 idx 个 panel 对应那一组 rows，原生页面按点击顺序只显示一个 panel，
+    // 所以这里只需要渲染所有可见的 row。
+    const cells = row.querySelectorAll('[data-testid="beast-core-table-td"]');
+    if (cells.length < 5) return;
+    const title     = cells[0].innerText.trim();
+    const applyTime = cells[1].innerText.trim();
+    const actTime   = cells[2].innerText.trim();
+    const joined    = cells[3].innerText.trim();
+    let them = '', type = '';
+    try {
+      const btn = row.querySelector('a[data-testid="beast-core-button-link"]');
+      ({activityType:type, activityThematicId:them} = getReactProps(btn));
+    } catch {}
+    // 最后一列放 checkbox
+    panel.innerHTML += `
+      <div class="moduled-table-row">
+        <div>${title}</div>
+        <div>${applyTime}</div>
+        <div>${actTime}</div>
+        <div>${joined}</div>
+        <div>
+          <input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}" />
+        </div>
+      </div>`;
+  });
+}
+
 
   /*** —— 渲染“报名详情” —— ***/
   function renderSubmitPage() {
