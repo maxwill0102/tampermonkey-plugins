@@ -220,12 +220,15 @@
         const priceVal = Number(d.querySelector('#moduled-price-input').value.trim());
         if (!priceVal) return alert('请填写价格阈值');
         const stockVal = d.querySelector('#moduled-stock-input').value.trim();
-        const sel = d.querySelector('input[name="activity"]:checked');
-        if (!sel) return alert('请选择活动');
-
-        window.__moduled_type__       = +sel.dataset.type;
-        window.__moduled_thematicId__ = +sel.dataset.thematicid;
-        window.__moduled_scrollContext__ = '';
+       // 收集所有被勾选的活动
+      const sels = Array.from(d.querySelectorAll('input[name="activity"]:checked'));
+      if (sels.length === 0) return alert('请至少选择一个活动');
+      window.__moduled_scrollContext__ = '';
+      // 如果你想对每个活动都跑一次流水线，可以这样：
+      window.__moduled_typeList__       = sels.map(el=>+el.dataset.type);
+      window.__moduled_thematicIdList__ = sels.map(el=>+el.dataset.thematicid);
+ 
+        
         window.__moduled_config__ = {
           mode, priceVal, stockVal,
           batchIndex: 0,
@@ -493,8 +496,6 @@
 function fetchActivityData() {
   const longCon = document.getElementById('moduled-long');
   if (!longCon) return;
-
-  // 先清空，插入表头和空 tbody
   longCon.innerHTML = `
     <table>
       <thead>
@@ -505,29 +506,28 @@ function fetchActivityData() {
         </tr>
       </thead>
       <tbody id="long-rows"></tbody>
-    </table>
-  `;
-
+    </table>`;
   const tbody = document.getElementById('long-rows');
   document.querySelectorAll('.act-item_actItem__x2Uci').forEach(el => {
     const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText.trim() || '';
     const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText.trim() || '';
-    let type = '', them = '';
+    let type='', them='';
     try {
       const btn = el.querySelector('a[data-testid="beast-core-button-link"]');
-      ({ activityType: type, activityThematicId: them } = getReactProps(btn));
-    } catch {}
+      ({ activityType:type, activityThematicId:them } = getReactProps(btn));
+    } catch{}
     tbody.innerHTML += `
       <tr>
         <td>${name}</td>
         <td style="word-break:break-word;line-height:1.4">${desc}</td>
         <td class="select-col">
-          <input type="radio" name="activity" data-type="${type}" data-thematicid="${them}" />
+          <!-- 改为 checkbox -->
+          <input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}" />
         </td>
-      </tr>
-    `;
+      </tr>`;
   });
 }
+
 
 
   /*** —— 拉取列表页短期活动 —— ***/
@@ -552,7 +552,7 @@ function fetchActivityData() {
         panels[i].innerHTML += `
           <div class="moduled-table-row">
             <div>${txt}</div><div>–</div><div>–</div><div>–</div>
-            <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${them}" /></div>
+            <div><input type="checkbox" name="activity" data-type="${type}" data-thematicid="${them}" /></div>
           </div>`;
       });
     }
