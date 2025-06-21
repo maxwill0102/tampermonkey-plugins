@@ -91,6 +91,36 @@
     .moduled-tab.active { color:red; border-bottom:2px solid red; }
     .moduled-tab-panel { display:none; max-height:300px; overflow-y:auto; }
     .moduled-tab-panel.active { display:block; }
+      /* —— 长期活动表格美化 —— */
+  #moduled-long table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin-top: 8px;
+  }
+  #moduled-long th, #moduled-long td {
+    padding: 8px;
+    border: 1px solid #eee;
+    vertical-align: middle;
+  }
+  #moduled-long th {
+    background: #fafafa;
+    text-align: left;
+    font-weight: 500;
+  }
+  /* 隔行背景 */
+  #moduled-long tbody tr:nth-child(odd) {
+    background: #fdfdfd;
+  }
+  /* 悬停高亮 */
+  #moduled-long tbody tr:hover {
+    background: #f0f8ff;
+  }
+  /* 选择列居中、宽度固定 */
+  #moduled-long td.select-col {
+    text-align: center;
+    width: 80px;
+  }
   `);
 
   /*** —— React Props 助手 —— ***/
@@ -460,25 +490,45 @@
   }
 
   /*** —— 拉取列表页长期活动 —— ***/
-  function fetchActivityData() {
-    const longCon = document.getElementById('moduled-long');
-    if (!longCon) return;
-    longCon.innerHTML = '<div class="moduled-table-header"><div>类型</div><div>说明</div><div>选择</div></div>';
-    document.querySelectorAll('.act-item_actItem__x2Uci').forEach(el => {
-      const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText.trim() || '';
-      const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText.trim() || '';
-      let type='', them='';
-      try {
-        const btn = el.querySelector('a[data-testid="beast-core-button-link"]');
-        ({activityType:type, activityThematicId:them} = getReactProps(btn));
-      } catch {}
-      longCon.innerHTML += `
-        <div class="moduled-table-row">
-          <div>${name}</div><div>${desc}</div>
-          <div><input type="radio" name="activity" data-type="${type}" data-thematicid="${them}" /></div>
-        </div>`;
-    });
-  }
+function fetchActivityData() {
+  const longCon = document.getElementById('moduled-long');
+  if (!longCon) return;
+
+  // 先清空，插入表头和空 tbody
+  longCon.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th style="width:20%">类型</th>
+          <th>说明</th>
+          <th class="select-col">选择</th>
+        </tr>
+      </thead>
+      <tbody id="long-rows"></tbody>
+    </table>
+  `;
+
+  const tbody = document.getElementById('long-rows');
+  document.querySelectorAll('.act-item_actItem__x2Uci').forEach(el => {
+    const name = el.querySelector('.act-item_activityName__Ryh3Y')?.innerText.trim() || '';
+    const desc = el.querySelector('.act-item_activityContent__ju2KR')?.innerText.trim() || '';
+    let type = '', them = '';
+    try {
+      const btn = el.querySelector('a[data-testid="beast-core-button-link"]');
+      ({ activityType: type, activityThematicId: them } = getReactProps(btn));
+    } catch {}
+    tbody.innerHTML += `
+      <tr>
+        <td>${name}</td>
+        <td style="word-break:break-word;line-height:1.4">${desc}</td>
+        <td class="select-col">
+          <input type="radio" name="activity" data-type="${type}" data-thematicid="${them}" />
+        </td>
+      </tr>
+    `;
+  });
+}
+
 
   /*** —— 拉取列表页短期活动 —— ***/
   async function fetchShortTermActivities() {
